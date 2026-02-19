@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jboss-deployment-structure>
+    <deployment>
+        <exclusions>
+            <!-- Exclure Hibernate de WildFly, utiliser celui du WAR -->
+            <module name="org.hibernate.orm.main"/>
+            <module name="org.hibernate.search.orm.main"/>
+        </exclusions>
+        <dependencies>
+            <module name="com.sun.xml.bind" optional="true"/>
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>

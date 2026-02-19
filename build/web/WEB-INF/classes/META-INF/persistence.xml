@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="3.0"
+             xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence
+             https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
+
+    <persistence-unit name="MiniProjetPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <class>model.Utilisateur</class>
+        <class>model.Module</class>
+        <class>model.Enseignant</class>
+        <class>model.Etudiant</class>
+        <class>model.TravailPratique</class>
+        <class>model.Commentaire</class>
+        <class>model.Notification</class>
+        <class>model.AbsenceReport</class>
+        <class>model.Rapport</class>
+
+        <exclude-unlisted-classes>false</exclude-unlisted-classes>
+
+        <properties>
+            <property name="jakarta.persistence.jdbc.driver"
+                      value="com.mysql.cj.jdbc.Driver"/>
+            <property name="jakarta.persistence.jdbc.url"
+                      value="jdbc:mysql://localhost:3306/miniprojet_be4?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true"/>
+            <property name="jakarta.persistence.jdbc.user"
+                      value="root"/>
+
+            <!-- ✅ METTEZ VOTRE MOT DE PASSE ICI -->
+            <property name="jakarta.persistence.jdbc.password"
+                      value="@YoUb1234"/>
+
+            <property name="hibernate.dialect"
+                      value="org.hibernate.dialect.MySQLDialect"/>
+            <property name="hibernate.hbm2ddl.auto"
+                      value="update"/>
+            <property name="hibernate.show_sql"
+                      value="false"/>
+            <property name="hibernate.transaction.coordinator_class"
+                      value="jdbc"/>
+        </properties>
+    </persistence-unit>
+</persistence>
