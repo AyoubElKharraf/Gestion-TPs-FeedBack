@@ -151,14 +151,6 @@
                 <input type="hidden" name="moduleId" value="<%= preselectedModuleId %>"/>
                 <p class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-800"><%= moduleDisplayName %></p>
                 <p id="moduleError" class="text-red-500 text-xs mt-1 hidden">Sélectionnez un module.</p>
-                <% if (rapports != null && !rapports.isEmpty()) {
-                    for (Rapport rapp : rapports) {
-                        if (rapp.getModule() == null || !rapp.getModule().getId().equals(preselectedModuleId)) continue;
-                %>
-                <p class="text-xs text-gray-500 mt-2">Consulter le rapport de l'enseignant :</p>
-                <a href="<%= ctx %>/RapportDownloadServlet?id=<%= rapp.getId() %>" target="_blank"
-                   class="text-sm text-primary hover:underline font-medium">📄 <%= rapp.getTitre() != null ? rapp.getTitre() : "Télécharger" %></a>
-                <% } } %>
                 <% } else { %>
                 <select name="moduleId" id="moduleId"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
@@ -176,20 +168,6 @@
                     <% } } %>
                 </select>
                 <p id="moduleError" class="text-red-500 text-xs mt-1 hidden">Sélectionnez un module.</p>
-                <% if (rapports != null && !rapports.isEmpty()) { %>
-                <div id="rapportLinkBox" class="mt-2 hidden">
-                    <p class="text-xs text-gray-500 mb-1">Consulter le rapport de l'enseignant pour ce module :</p>
-                    <% for (Rapport rapp : rapports) {
-                        if (rapp.getModule() == null) continue;
-                    %>
-                    <a href="<%= ctx %>/RapportDownloadServlet?id=<%= rapp.getId() %>" target="_blank"
-                       class="rapport-link text-sm text-primary hover:underline font-medium"
-                       data-module-id="<%= rapp.getModule().getId() %>" style="display:none;">
-                        📄 <%= rapp.getTitre() != null ? rapp.getTitre() : "Télécharger le rapport" %>
-                    </a>
-                    <% } %>
-                </div>
-                <% } %>
                 <% } %>
             </div>
 
@@ -298,28 +276,6 @@
         }
         if (!valid) e.preventDefault();
     });
-
-    // Afficher le lien "Télécharger le rapport" pour le module sélectionné
-    const rapportLinkBox = document.getElementById('rapportLinkBox');
-    const moduleSelect = document.getElementById('moduleId');
-    if (rapportLinkBox && moduleSelect) {
-        function updateRapportLink() {
-            const links = document.querySelectorAll('.rapport-link');
-            links.forEach(l => { l.style.display = 'none'; });
-            const val = moduleSelect.value;
-            if (!val) { rapportLinkBox.classList.add('hidden'); return; }
-            const matching = document.querySelectorAll('.rapport-link[data-module-id="' + val + '"]');
-            matching.forEach(l => { l.style.display = 'inline-block'; });
-            if (matching.length) {
-                rapportLinkBox.classList.remove('hidden');
-                rapportLinkBox.querySelector('p').textContent = matching.length > 1
-                    ? 'Consulter les rapports de l\'enseignant pour ce module :'
-                    : 'Consulter le rapport de l\'enseignant pour ce module :';
-            } else rapportLinkBox.classList.add('hidden');
-        }
-        moduleSelect.addEventListener('change', updateRapportLink);
-        updateRapportLink();
-    }
 
     // Recherche dans la liste des TPs de l'enseignant
     const searchRapports = document.getElementById('searchRapports');

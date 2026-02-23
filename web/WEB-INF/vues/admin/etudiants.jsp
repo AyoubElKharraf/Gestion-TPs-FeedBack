@@ -10,6 +10,7 @@
     String ctx = request.getContextPath();
     boolean success = "1".equals(request.getParameter("success"));
     boolean deleted = "1".equals(request.getParameter("deleted"));
+    boolean signaleAbsence = "1".equals(request.getParameter("signale-absence"));
 %>
 <!DOCTYPE html>
 <html lang="fr">
@@ -44,7 +45,7 @@
                 onclick="toggleProfilePanel()"
                 class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "AD" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "AD" %>
             </div>
             <span class="text-sm font-medium hidden md:block">
                 <%= userSession != null ? userSession.getNomComplet() : "Admin" %>
@@ -141,6 +142,11 @@
         <% if ("1".equals(request.getParameter("notfound"))) { %>
         <div class="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-4 text-sm">
             ⚠️ Étudiant introuvable.
+        </div>
+        <% } %>
+        <% if (signaleAbsence) { %>
+        <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            Alerte envoyée au système d'absences (si configuré).
         </div>
         <% } %>
 
@@ -241,7 +247,7 @@
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center
                                             font-bold text-green-700 text-sm flex-shrink-0">
-                                    <%= String.valueOf(e.getPrenom().charAt(0)).toUpperCase() %><%= String.valueOf(e.getNom().charAt(0)).toUpperCase() %>
+                                    <%= (e.getPrenom() != null && !e.getPrenom().isEmpty()) ? String.valueOf(e.getPrenom().charAt(0)).toUpperCase() : "?" %><%= (e.getNom() != null && !e.getNom().isEmpty()) ? String.valueOf(e.getNom().charAt(0)).toUpperCase() : "?" %>
                                 </div>
                                 <div>
                                     <p class="font-semibold text-gray-800"><%= e.getNomComplet() %></p>

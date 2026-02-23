@@ -161,7 +161,7 @@ public class EnseignantServlet extends HttpServlet {
             enseignant.setPrenom(prenom.trim());
             enseignant.setEmail(email.trim());
             if (motDePasse != null && !motDePasse.trim().isEmpty()) {
-                enseignant.setMotDePasse(motDePasse);
+                enseignant.setMotDePasse(util.PasswordUtil.hash(motDePasse));
             }
             enseignant.setSpecialite(specialite != null ? specialite.trim() : "");
 

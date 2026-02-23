@@ -1,5 +1,6 @@
 package servlet.enseignant;
 
+import dao.EnseignantDAO;
 import dao.ModuleDAO;
 import dao.NotificationDAO;
 import dao.RapportDAO;
@@ -30,6 +31,7 @@ public class RapportServlet extends HttpServlet {
     private final ModuleDAO moduleDAO = new ModuleDAO();
     private final RapportDAO rapportDAO = new RapportDAO();
     private final NotificationDAO notifDAO = new NotificationDAO();
+    private final EnseignantDAO enseignantDAO = new EnseignantDAO();
 
     private Enseignant getEnseignant(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         Utilisateur u = (Utilisateur) req.getSession().getAttribute("utilisateur");
@@ -37,7 +39,7 @@ public class RapportServlet extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/LoginServlet");
             return null;
         }
-        return (Enseignant) u;
+        return enseignantDAO.findById(u.getId());
     }
 
     @Override
@@ -50,7 +52,7 @@ public class RapportServlet extends HttpServlet {
             String idParam = req.getParameter("id");
             if (idParam != null) {
                 Long id = Long.parseLong(idParam);
-                Rapport r = rapportDAO.findById(id);
+                Rapport r = rapportDAO.findByIdWithModule(id);
                 if (r != null && r.getModule() != null && r.getModule().getEnseignant() != null
                         && r.getModule().getEnseignant().getId().equals(ens.getId())) {
                     rapportDAO.delete(id);
@@ -79,16 +81,26 @@ public class RapportServlet extends HttpServlet {
         String titre = req.getParameter("titre");
         Part filePart = req.getPart("fichier");
 
-        if (moduleIdStr == null || titre == null || titre.trim().isEmpty() || filePart == null || filePart.getSize() == 0) {
+        if (titre == null || titre.trim().isEmpty() || filePart == null || filePart.getSize() == 0) {
             resp.sendRedirect(req.getContextPath() + "/enseignant/RapportServlet?error=1");
             return;
         }
 
-        Long moduleId = Long.parseLong(moduleIdStr);
-        Module module = moduleDAO.findById(moduleId);
-        if (module == null || !module.getEnseignant().getId().equals(ens.getId())) {
-            resp.sendRedirect(req.getContextPath() + "/enseignant/RapportServlet?error=2");
-            return;
+        Module module;
+        if (moduleIdStr != null && !moduleIdStr.trim().isEmpty()) {
+            Long moduleId = Long.parseLong(moduleIdStr.trim());
+            module = moduleDAO.findById(moduleId);
+            if (module == null || !module.getEnseignant().getId().equals(ens.getId())) {
+                resp.sendRedirect(req.getContextPath() + "/enseignant/RapportServlet?error=2");
+                return;
+            }
+        } else {
+            java.util.List<Module> modulesEns = moduleDAO.findByEnseignant(ens.getId());
+            if (modulesEns == null || modulesEns.isEmpty()) {
+                resp.sendRedirect(req.getContextPath() + "/enseignant/RapportServlet?error=1");
+                return;
+            }
+            module = modulesEns.get(0);
         }
 
         String fileName = getFileName(filePart);

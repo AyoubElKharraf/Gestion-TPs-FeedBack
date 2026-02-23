@@ -129,6 +129,20 @@ public class RapportDAO {
         }
     }
 
+    /** Rapports dont la date limite est dépassée (pour alerte non-remise vers système d'absences). */
+    public List<Rapport> findRapportsWithDateLimitePassed() {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            return em.createQuery(
+                "SELECT r FROM Rapport r LEFT JOIN FETCH r.module m LEFT JOIN FETCH m.enseignant " +
+                "WHERE r.dateLimite IS NOT NULL AND r.dateLimite < :now ORDER BY r.dateLimite DESC",
+                Rapport.class
+            ).setParameter("now", new Date()).getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
     /** Rapports pour les modules dont les id sont dans la liste (pour affichage côté étudiant). */
     public List<Rapport> findByModuleIds(List<Long> moduleIds) {
         if (moduleIds == null || moduleIds.isEmpty()) return new ArrayList<>();

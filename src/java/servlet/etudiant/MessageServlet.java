@@ -3,6 +3,7 @@ package servlet.etudiant;
 import dao.EtudiantDAO;
 import dao.NotificationDAO;
 import dao.TravailPratiqueDAO;
+import dao.UtilisateurDAO;
 import model.Etudiant;
 import model.Enseignant;
 import model.Utilisateur;
@@ -14,7 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Étudiant : envoyer un message (commentaire) à un Enseignant (de ses modules / TPs).
@@ -24,6 +27,7 @@ public class MessageServlet extends HttpServlet {
 
     private final TravailPratiqueDAO tpDAO = new TravailPratiqueDAO();
     private final NotificationDAO notifDAO = new NotificationDAO();
+    private final UtilisateurDAO utilisateurDAO = new UtilisateurDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -31,10 +35,26 @@ public class MessageServlet extends HttpServlet {
         if (etu == null) return;
         List<Enseignant> enseignants = tpDAO.findEnseignantsByEtudiant(etu.getId());
         req.setAttribute("enseignants", enseignants);
+        Map<Long, java.util.Date> lastMessageDateMap = new HashMap<>();
+        Map<Long, Long> unreadCountMap = new HashMap<>();
+        for (Enseignant e : enseignants) {
+            lastMessageDateMap.put(e.getId(), notifDAO.getLastMessageDate(etu.getId(), e.getId()));
+            unreadCountMap.put(e.getId(), notifDAO.countUnreadFrom(etu.getId(), e.getId()));
+        }
+        req.setAttribute("lastMessageDateMap", lastMessageDateMap);
+        req.setAttribute("unreadCountMap", unreadCountMap);
         String destParam = req.getParameter("destinataireId");
         if (destParam != null && !destParam.isEmpty()) {
             try {
-                req.setAttribute("preselectedDestinataireId", Long.parseLong(destParam.trim()));
+                Long destId = Long.parseLong(destParam.trim());
+                req.setAttribute("preselectedDestinataireId", destId);
+                notifDAO.marquerLuesFromExpediteur(etu.getId(), destId);
+                Utilisateur otherUser = enseignants.stream().filter(e -> e.getId().equals(destId)).findFirst().orElse(null);
+                if (otherUser == null) otherUser = utilisateurDAO.findById(destId);
+                if (otherUser != null) {
+                    req.setAttribute("otherUser", otherUser);
+                    req.setAttribute("conversation", notifDAO.findConversation(etu.getId(), destId));
+                }
             } catch (NumberFormatException ignored) {}
         }
         req.setAttribute("nbNotifs", notifDAO.countNonLues(etu.getId()));
@@ -60,11 +80,16 @@ public class MessageServlet extends HttpServlet {
             return;
         }
         NotificationService.envoyerMessage(etu, dest, message);
-        resp.sendRedirect(req.getContextPath() + "/etudiant/MessageServlet?sent=1");
+        resp.sendRedirect(req.getContextPath() + "/etudiant/MessageServlet?destinataireId=" + id + "&sent=1");
     }
 
     private Etudiant getEtudiant(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        Utilisateur u = (Utilisateur) req.getSession(false).getAttribute("utilisateur");
+        jakarta.servlet.http.HttpSession session = req.getSession(false);
+        if (session == null) {
+            resp.sendRedirect(req.getContextPath() + "/LoginServlet");
+            return null;
+        }
+        Utilisateur u = (Utilisateur) session.getAttribute("utilisateur");
         if (u == null || u.getRole() != Utilisateur.Role.ETUDIANT) {
             resp.sendRedirect(req.getContextPath() + "/LoginServlet");
             return null;

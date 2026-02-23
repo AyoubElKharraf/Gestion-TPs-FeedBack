@@ -1,11 +1,15 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.Utilisateur, model.Etudiant, java.util.List" %>
+<%@ page import="model.Utilisateur, model.Etudiant, model.Notification, java.util.List, java.util.Map, java.text.SimpleDateFormat" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     List<Etudiant> etudiants = (List<Etudiant>) request.getAttribute("etudiants");
+    Map<Long, java.util.Date> lastMessageDateMap = (Map<Long, java.util.Date>) request.getAttribute("lastMessageDateMap");
+    Map<Long, Long> unreadCountMap = (Map<Long, Long>) request.getAttribute("unreadCountMap");
     Long preselectedDestinataireId = (Long) request.getAttribute("preselectedDestinataireId");
     Utilisateur replyToUser = (Utilisateur) request.getAttribute("replyToUser");
+    List<Notification> conversation = (List<Notification>) request.getAttribute("conversation");
     Long nbNotifs = (Long) request.getAttribute("nbNotifs");
+    SimpleDateFormat sdfTime = new SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.FRENCH);
     String activeSection = (String) request.getAttribute("activeSection");
     if (activeSection == null) activeSection = "messages";
     String ctx = request.getContextPath();
@@ -39,7 +43,7 @@
         </button>
         <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "EN" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "EN" %>
             </div>
             <span class="text-sm font-medium hidden md:block"><%= userSession != null ? userSession.getNomComplet() : "Enseignant" %></span>
         </button>
@@ -116,15 +120,34 @@
         <% } %>
         <% if (replyToUser != null) { %>
         <div class="bg-white rounded-xl shadow p-6 max-w-xl">
-            <h3 class="text-lg font-semibold text-primary mb-3">Répondre à <%= replyToUser.getNomComplet() %></h3>
+            <h3 class="text-lg font-semibold text-primary mb-3">Conversation avec <%= replyToUser.getNomComplet() %></h3>
+            <% if (conversation != null && !conversation.isEmpty()) { %>
+            <p class="text-xs text-gray-500 mb-2">Dernier message : <%= sdfTime.format(conversation.get(conversation.size()-1).getDateCreation()) %></p>
+            <% } %>
+            <div class="bg-gray-50 rounded-xl p-4 mb-4 max-h-80 overflow-y-auto space-y-2">
+                <% if (conversation != null && !conversation.isEmpty()) {
+                    for (Notification n : conversation) {
+                        boolean fromMe = n.getExpediteur() != null && userSession != null && n.getExpediteur().getId().equals(userSession.getId());
+                        boolean iAmDest = userSession != null && n.getDestinataire() != null && n.getDestinataire().getId().equals(userSession.getId());
+                %>
+                <div class="flex <%= fromMe ? "justify-end" : "justify-start" %>">
+                    <div class="max-w-[85%] rounded-2xl px-4 py-2 <%= fromMe ? "bg-primary text-white" : "bg-white border border-gray-200 text-gray-800" %>">
+                        <p class="text-sm"><%= n.getMessage() != null ? n.getMessage().replace("<", "&lt;").replace(">", "&gt;") : "" %></p>
+                        <p class="text-xs mt-1 opacity-80"><%= n.getDateCreation() != null ? sdfTime.format(n.getDateCreation()) : "" %><% if (iAmDest) { %> · <%= n.isLu() ? "Lu" : "Non lu" %><% } %></p>
+                    </div>
+                </div>
+                <% } } else { %>
+                <p class="text-gray-400 text-sm text-center py-4">Aucun message encore. Envoyez le premier.</p>
+                <% } %>
+            </div>
             <form method="post" action="<%= ctx %>/enseignant/MessageServlet">
                 <input type="hidden" name="destinataireId" value="<%= replyToUser.getId() %>"/>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                    <textarea name="message" required rows="4" maxlength="1000" placeholder="Votre réponse..."
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Répondre</label>
+                    <textarea name="message" required rows="3" maxlength="1000" placeholder="Votre message..."
                               class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm"></textarea>
                 </div>
-                <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-900 transition">Envoyer la réponse</button>
+                <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-900 transition">Envoyer</button>
             </form>
         </div>
         <% } else if (etudiants == null || etudiants.isEmpty()) { %>
@@ -133,24 +156,26 @@
         </div>
         <% } else { %>
         <div class="bg-white rounded-xl shadow p-6 max-w-xl">
-            <form method="post" action="<%= ctx %>/enseignant/MessageServlet">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Étudiant</label>
-                    <select name="destinataireId" required class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm">
-                        <option value="">-- Choisir un étudiant --</option>
-                        <% for (Etudiant e : etudiants) { %>
-                        <option value="<%= e.getId() %>"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %> – <%= e.getEmail() %></option>
-                        <% } %>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                    <textarea name="message" required rows="4" maxlength="1000" placeholder="Votre message..."
-                              class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm"></textarea>
-                </div>
-                <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-900 transition">Envoyer</button>
-            </form>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Étudiant</label>
+                <select id="selectEtudiant" class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm">
+                    <option value="">-- Choisir un destinataire pour voir la conversation --</option>
+                    <% for (Etudiant e : etudiants) {
+                        java.util.Date lastDate = (lastMessageDateMap != null) ? lastMessageDateMap.get(e.getId()) : null;
+                        Long unread = (unreadCountMap != null) ? unreadCountMap.get(e.getId()) : null;
+                        int unreadInt = (unread != null && unread > 0) ? unread.intValue() : 0;
+                    %>
+                    <option value="<%= e.getId() %>"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %><%= lastDate != null ? " – Dernier: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
+                    <% } %>
+                </select>
+            </div>
+            <p class="text-gray-500 text-sm">Sélectionnez un étudiant pour afficher la conversation et répondre.</p>
         </div>
+        <script>
+            document.getElementById('selectEtudiant').addEventListener('change', function() {
+                if (this.value) window.location = '<%= ctx %>/enseignant/MessageServlet?destinataireId=' + this.value;
+            });
+        </script>
         <% } %>
     </main>
 </div>
@@ -165,7 +190,8 @@
                 list.innerHTML = data.map(function(n){
                     var content = '<p class="text-xs text-gray-500">' + (n.expediteur ? 'De: ' + n.expediteur : '') + '</p><p class="text-sm text-gray-700">' + (n.message||'') + '</p><p class="text-xs text-gray-400 mt-0.5">' + (n.date||'') + '</p>' + (n.replyUrl ? '<p class="text-xs text-primary font-medium mt-1">Cliquez pour répondre →</p>' : '');
                     var cls = 'px-4 py-3 hover:bg-gray-50 ' + (n.lu ? '' : 'bg-blue-50');
-                    return n.replyUrl ? '<a href="' + n.replyUrl + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
+                    var url = n.replyUrl || n.markReadUrl;
+                    return url ? '<a href="' + url + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
                 }).join('');
             });
     }

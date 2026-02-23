@@ -39,7 +39,7 @@
         <div class="flex items-center gap-5">
             <div class="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center
                         font-bold text-purple-700 text-2xl flex-shrink-0">
-                <%= String.valueOf(enseignant.getPrenom().charAt(0)).toUpperCase() %><%= String.valueOf(enseignant.getNom().charAt(0)).toUpperCase() %>
+                <%= (enseignant.getPrenom() != null && !enseignant.getPrenom().isEmpty()) ? String.valueOf(enseignant.getPrenom().charAt(0)).toUpperCase() : "?" %><%= (enseignant.getNom() != null && !enseignant.getNom().isEmpty()) ? String.valueOf(enseignant.getNom().charAt(0)).toUpperCase() : "?" %>
             </div>
             <div class="flex-1">
                 <h2 class="text-2xl font-bold text-primary"><%= enseignant.getNomComplet() %></h2>

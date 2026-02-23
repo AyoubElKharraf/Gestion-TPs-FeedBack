@@ -15,7 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Enseignant : envoyer un message (commentaire) à un Étudiant (de ses modules).
@@ -33,17 +35,25 @@ public class MessageServlet extends HttpServlet {
         if (ens == null) return;
         List<Etudiant> etudiants = tpDAO.findEtudiantsByEnseignant(ens.getId());
         req.setAttribute("etudiants", etudiants);
+        Map<Long, java.util.Date> lastMessageDateMap = new HashMap<>();
+        Map<Long, Long> unreadCountMap = new HashMap<>();
+        for (Etudiant e : etudiants) {
+            lastMessageDateMap.put(e.getId(), notifDAO.getLastMessageDate(ens.getId(), e.getId()));
+            unreadCountMap.put(e.getId(), notifDAO.countUnreadFrom(ens.getId(), e.getId()));
+        }
+        req.setAttribute("lastMessageDateMap", lastMessageDateMap);
+        req.setAttribute("unreadCountMap", unreadCountMap);
         String destParam = req.getParameter("destinataireId");
         if (destParam != null && !destParam.isEmpty()) {
             try {
                 Long destId = Long.parseLong(destParam.trim());
                 req.setAttribute("preselectedDestinataireId", destId);
-                boolean inList = etudiants.stream().anyMatch(e -> e.getId().equals(destId));
-                if (!inList) {
-                    Utilisateur other = utilisateurDAO.findById(destId);
-                    if (other != null && other.getRole() == Utilisateur.Role.ADMIN) {
-                        req.setAttribute("replyToUser", other);
-                    }
+                notifDAO.marquerLuesFromExpediteur(ens.getId(), destId);
+                Utilisateur otherUser = etudiants.stream().filter(e -> e.getId().equals(destId)).findFirst().orElse(null);
+                if (otherUser == null) otherUser = utilisateurDAO.findById(destId);
+                if (otherUser != null) {
+                    req.setAttribute("replyToUser", otherUser);
+                    req.setAttribute("conversation", notifDAO.findConversation(ens.getId(), destId));
                 }
             } catch (NumberFormatException ignored) {}
         }
@@ -68,20 +78,25 @@ public class MessageServlet extends HttpServlet {
         Etudiant destEtudiant = etudiants.stream().filter(e -> e.getId().equals(id)).findFirst().orElse(null);
         if (destEtudiant != null) {
             NotificationService.envoyerMessage(ens, destEtudiant, message);
-            resp.sendRedirect(req.getContextPath() + "/enseignant/MessageServlet?sent=1");
+            resp.sendRedirect(req.getContextPath() + "/enseignant/MessageServlet?destinataireId=" + id + "&sent=1");
             return;
         }
         Utilisateur destUser = utilisateurDAO.findById(id);
         if (destUser != null && destUser.getRole() == Utilisateur.Role.ADMIN) {
             NotificationService.envoyerMessage(ens, destUser, message);
-            resp.sendRedirect(req.getContextPath() + "/enseignant/MessageServlet?sent=1");
+            resp.sendRedirect(req.getContextPath() + "/enseignant/MessageServlet?destinataireId=" + id + "&sent=1");
             return;
         }
         resp.sendRedirect(req.getContextPath() + "/enseignant/MessageServlet?error=2");
     }
 
     private Enseignant getEnseignant(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        Utilisateur u = (Utilisateur) req.getSession(false).getAttribute("utilisateur");
+        jakarta.servlet.http.HttpSession session = req.getSession(false);
+        if (session == null) {
+            resp.sendRedirect(req.getContextPath() + "/LoginServlet");
+            return null;
+        }
+        Utilisateur u = (Utilisateur) session.getAttribute("utilisateur");
         if (u == null || u.getRole() != Utilisateur.Role.ENSEIGNANT) {
             resp.sendRedirect(req.getContextPath() + "/LoginServlet");
             return null;

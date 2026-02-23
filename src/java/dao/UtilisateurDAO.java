@@ -2,6 +2,7 @@ package dao;
 
 import model.Enseignant;
 import model.Utilisateur;
+import util.PasswordUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
@@ -13,18 +14,21 @@ import java.util.List;
 public class UtilisateurDAO {
 
     /**
-     * Authentifie un utilisateur par email et mot de passe
+     * Authentifie un utilisateur par email et mot de passe (comparaison avec hash si stocké en hash).
      */
     public Utilisateur authenticate(String email, String motDePasse) {
         EntityManager em = JPAUtil.getEntityManager();
         try {
             TypedQuery<Utilisateur> q = em.createQuery(
-                "SELECT u FROM Utilisateur u WHERE u.email = :email AND u.motDePasse = :mdp",
+                "SELECT u FROM Utilisateur u WHERE u.email = :email",
                 Utilisateur.class
             );
             q.setParameter("email", email);
-            q.setParameter("mdp", motDePasse);
-            return q.getSingleResult();
+            Utilisateur u = q.getSingleResult();
+            if (u != null && PasswordUtil.verify(motDePasse, u.getMotDePasse())) {
+                return u;
+            }
+            return null;
         } catch (NoResultException e) {
             return null;
         } finally {

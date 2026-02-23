@@ -1,15 +1,24 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.Utilisateur,model.TravailPratique,model.Module,model.Rapport,java.util.List,java.util.Date,java.text.SimpleDateFormat" %>
+<%@ page import="model.Utilisateur,model.TravailPratique,model.Module,model.Rapport,java.util.List,java.util.Date,java.util.Locale,java.text.SimpleDateFormat" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     List<TravailPratique> travaux = (List<TravailPratique>) request.getAttribute("travaux");
     List<Module> modules = (List<Module>) request.getAttribute("modules");
     List<Rapport> rapports = (List<Rapport>) request.getAttribute("rapports");
+    String section = (String) request.getAttribute("section");
+    if (section == null) section = "modules";
+    Long moduleFiltreId = (Long) request.getAttribute("moduleFiltreId");
+    String filtreStatut = (String) request.getAttribute("filtreStatut");
+    String filtreDateMin = (String) request.getAttribute("filtreDateMin");
+    String filtreDateMax = (String) request.getAttribute("filtreDateMax");
     Long nbNotifs = (Long) request.getAttribute("nbNotifs");
     String ctx = request.getContextPath();
     boolean success = "1".equals(request.getParameter("success"));
     boolean deleted = "1".equals(request.getParameter("deleted"));
     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+    SimpleDateFormat sdfJour = new SimpleDateFormat("EEEE", Locale.FRENCH);
+    SimpleDateFormat sdfHeure = new SimpleDateFormat("HH:mm");
+    SimpleDateFormat sdfCourt = new SimpleDateFormat("d MMM", Locale.FRENCH);
     Date now = new Date();
 %>
 <!DOCTYPE html>
@@ -47,11 +56,30 @@
             </span>
             <% } %>
         </button>
-        <div class="w-9 h-9 bg-green-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-            <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "ET" %>
-        </div>
+        <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2">
+            <div class="w-9 h-9 bg-green-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
+                <% if (userSession != null && userSession.getPrenom() != null && userSession.getNom() != null) {
+                    String p = (userSession.getPrenom() != null && !userSession.getPrenom().isEmpty()) ? String.valueOf(userSession.getPrenom().charAt(0)) : "?";
+                    String n = (userSession.getNom() != null && !userSession.getNom().isEmpty()) ? String.valueOf(userSession.getNom().charAt(0)) : "?";
+                    out.print(p + n);
+                } else { %>ET<% } %>
+            </div>
+            <span class="text-sm font-medium hidden md:block"><%= userSession != null && userSession.getNom() != null && userSession.getPrenom() != null ? userSession.getNomComplet() : "Étudiant" %></span>
+        </button>
     </div>
 </header>
+
+<div id="profilePanel" class="fixed right-4 top-16 w-72 bg-white shadow-xl rounded-xl z-50 hidden border border-gray-200">
+    <div class="px-4 py-3 border-b flex justify-between items-center">
+        <span class="font-semibold text-gray-800">Profil</span>
+        <button onclick="toggleProfilePanel()" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+    </div>
+    <div class="px-4 py-4 text-sm text-gray-700 space-y-1">
+        <p><span class="font-semibold">Nom :</span> <%= userSession != null && userSession.getNom() != null && userSession.getPrenom() != null ? userSession.getNomComplet() : "-" %></p>
+        <p><span class="font-semibold">Email :</span> <%= userSession != null && userSession.getEmail() != null ? userSession.getEmail() : "-" %></p>
+        <p><span class="font-semibold">Rôle :</span> <%= userSession != null && userSession.getRole() != null ? userSession.getRole().name() : "ETUDIANT" %></p>
+    </div>
+</div>
 
 <%-- Panneau notifications AJAX --%>
 <div id="notifPanel"
@@ -78,28 +106,28 @@
     <%-- SIDEBAR --%>
     <aside class="w-64 bg-white shadow-md flex flex-col min-h-full">
         <nav class="flex flex-col p-4 gap-2 flex-1">
-            <a href="#modulesSection"
-               class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition">
+            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list&section=modules"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition <%= "modules".equals(section) ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100" %>">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 Modules
             </a>
-            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list"
-               class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium bg-primary text-white">
+            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list&section=devoirs"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition <%= "devoirs".equals(section) ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100" %>">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 4v16m8-8H4"/>
                 </svg>
-                Mes TPs & Feedback
+                Mes TPs
             </a>
-            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form"
-               class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition">
+            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list&section=feedback"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition <%= "feedback".equals(section) ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100" %>">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
-                Déposer / Modifier un TP
+                Feedback des TPs
             </a>
             <a href="<%= ctx %>/etudiant/MessageServlet"
                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition">
@@ -120,23 +148,7 @@
         </nav>
     </aside>
 
-    <main class="flex-1">
-
-        <%-- NAV TABS --%>
-        <div class="bg-white shadow-sm px-6">
-            <nav class="flex gap-6">
-                <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list"
-                   class="py-4 text-sm font-medium border-b-2 border-primary text-primary">
-                    📁 Mes TPs
-                </a>
-                <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form"
-                   class="py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-primary">
-                    ➕ Déposer un TP
-                </a>
-            </nav>
-        </div>
-
-<main class="flex-1 p-6 max-w-5xl mx-auto w-full">
+    <main class="flex-1 p-6 max-w-5xl mx-auto w-full">
 
     <%-- Alertes --%>
     <% if (success) { %>
@@ -155,225 +167,268 @@
     </div>
     <% } %>
 
-    <%-- Section Modules (style Classroom) --%>
+    <%-- Section Modules (affichage type Classroom) --%>
+    <% if ("modules".equals(section)) { %>
     <div id="modulesSection" class="mb-8">
         <h2 class="text-xl font-bold text-primary mb-4">Mes modules</h2>
         <% if (modules == null || modules.isEmpty()) { %>
         <p class="text-gray-400 text-sm">Aucun module disponible pour le moment.</p>
         <% } else { %>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <% 
-            String[] headerColors = new String[] { "bg-primary", "bg-gray-700" };
-            int colorIndex = 0;
-            for (Module m : modules) {
-                java.util.List<Rapport> rapportsDuModule = new java.util.ArrayList<>();
-                if (rapports != null) {
-                    for (Rapport r : rapports) {
-                        if (r.getModule() != null && r.getModule().getId().equals(m.getId())) rapportsDuModule.add(r);
-                    }
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <%
+            String[] headerBg = new String[] { "bg-blue-600", "bg-gray-700" };
+            String[] avatarBg = new String[] { "bg-white text-gray-700 border-2 border-gray-200", "bg-red-700 text-white border-0" };
+            int idx = 0;
+            for (model.Module m : modules) {
+                String headerClass = headerBg[idx % 2];
+                String avatarClass = avatarBg[idx % 2];
+                idx++;
+                String enseignantNom = (m.getEnseignant() != null) ? m.getEnseignant().getNomComplet() : "Sans enseignant";
+                String enseignantInitial = "?";
+                if (m.getEnseignant() != null && m.getEnseignant().getPrenom() != null && !m.getEnseignant().getPrenom().isEmpty() && m.getEnseignant().getNom() != null && !m.getEnseignant().getNom().isEmpty()) {
+                    enseignantInitial = String.valueOf(m.getEnseignant().getPrenom().charAt(0)) + String.valueOf(m.getEnseignant().getNom().charAt(0));
+                } else if (m.getEnseignant() != null && m.getEnseignant().getNom() != null && !m.getEnseignant().getNom().isEmpty()) {
+                    enseignantInitial = String.valueOf(m.getEnseignant().getNom().charAt(0));
                 }
-                String headerClass = headerColors[colorIndex % 2];
-                colorIndex++;
-                String enseignantInitial = (m.getEnseignant() != null && m.getEnseignant().getPrenom() != null && m.getEnseignant().getNom() != null)
-                    ? String.valueOf(m.getEnseignant().getPrenom().charAt(0)) + m.getEnseignant().getNom().charAt(0) : "?";
+                boolean canDepotModule = true;
+                Rapport prochainRapport = null;
+                Rapport dernierRapportAvecLimite = null;
+                if (rapports != null && m != null) {
+                    Date maxLimite = null;
+                    for (Rapport r : rapports) {
+                        if (r.getModule() != null && r.getModule().getId().equals(m.getId()) && r.getDateLimite() != null) {
+                            if (maxLimite == null || r.getDateLimite().after(maxLimite)) {
+                                maxLimite = r.getDateLimite();
+                                dernierRapportAvecLimite = r;
+                            }
+                            if (r.getDateLimite().after(now) && (prochainRapport == null || r.getDateLimite().before(prochainRapport.getDateLimite())))
+                                prochainRapport = r;
+                        }
+                    }
+                    if (maxLimite != null && now.after(maxLimite)) canDepotModule = false;
+                }
             %>
-            <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition flex flex-col">
-                <%-- En-tête type Classroom --%>
-                <div class="<%= headerClass %> relative h-24 px-5 pt-4 pb-2 flex flex-col justify-end">
-                    <p class="text-white font-bold text-lg underline decoration-white/50"><%= m.getNom() %></p>
-                    <p class="text-white/90 text-sm underline decoration-white/30"><%= m.getFiliere() != null ? m.getFiliere() + " 2025-2026" : "M2I 2025-2026" %></p>
-                    <p class="text-white/90 text-sm mt-0.5"><%= m.getEnseignant() != null ? m.getEnseignant().getNomComplet() : "Sans enseignant" %></p>
-                    <div class="absolute bottom-0 right-4 translate-y-1/2 w-12 h-12 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm shadow">
+            <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition flex flex-col">
+                <%-- En-tête style Classroom : bandeau coloré + avatar enseignant --%>
+                <div class="<%= headerClass %> relative min-h-[120px] px-5 pt-5 pb-3 flex flex-col justify-end">
+                    <%-- Icône décorative (chapeau) en haut à droite --%>
+                    <div class="absolute top-3 right-3 opacity-20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L2 12h3v9h14v-9h3L12 3zm0 2.5l6.5 6.5H14v7h-4v-7H5.5L12 5.5z"/></svg>
+                    </div>
+                    <p class="text-white font-bold text-xl underline decoration-white/40"><%= m.getNom() %></p>
+                    <p class="text-white/90 text-sm underline decoration-white/30 mt-0.5"><%= m.getFiliere() != null ? m.getFiliere() + " 2025-2026" : "M2I 2025-2026" %></p>
+                    <p class="text-white/90 text-sm mt-1"><%= enseignantNom %></p>
+                    <%-- Avatar enseignant (initial) qui chevauche le contenu --%>
+                    <div class="absolute bottom-0 right-4 translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg shadow-md <%= avatarClass %>">
                         <%= enseignantInitial %>
                     </div>
                 </div>
-                <%-- Contenu : plusieurs devoirs (rapports) par module --%>
-                <div class="flex-1 p-5 pt-8 min-h-[120px]">
-                    <%
-                        boolean canDepotModule = true;
-                        if (rapports != null && m != null) {
-                            Date maxLimite = null;
-                            for (Rapport r : rapports) {
-                                if (r.getModule() != null && r.getModule().getId().equals(m.getId()) && r.getDateLimite() != null) {
-                                    if (maxLimite == null || r.getDateLimite().after(maxLimite)) maxLimite = r.getDateLimite();
-                                }
-                            }
-                            if (maxLimite != null && now.after(maxLimite)) canDepotModule = false;
-                        }
+                <%-- Zone blanche : date limite (toujours affichée si elle existe), puis bouton Déposer --%>
+                <div class="flex-1 p-5 pt-10 min-h-[100px]">
+                    <% if (prochainRapport != null && prochainRapport.getDateLimite() != null) {
+                        String jour = sdfJour.format(prochainRapport.getDateLimite());
+                        String heure = sdfHeure.format(prochainRapport.getDateLimite());
+                        String titreRapport = prochainRapport.getTitre() != null ? prochainRapport.getTitre() : "Devoir";
                     %>
-                    <% if (!rapportsDuModule.isEmpty()) { %>
-                    <p class="text-sm text-gray-600 mb-2">Devoirs / supports</p>
-                    <ul class="space-y-2 mb-3">
-                        <% for (Rapport rapp : rapportsDuModule) { %>
-                        <li class="flex items-center justify-between gap-2 flex-wrap">
-                            <span class="text-sm font-medium text-gray-700"><%= rapp.getTitre() %></span>
-                            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=voir-devoir&rapportId=<%= rapp.getId() %>"
-                               class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-primary text-white rounded-lg hover:bg-blue-900 transition text-xs font-medium">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                Voir le devoir
-                            </a>
-                        </li>
-                        <% } %>
-                    </ul>
-                    <% if (canDepotModule) { %>
+                    <p class="text-sm text-gray-600 mb-2">
+                        <span class="font-medium text-gray-700">Date limite :</span> <%= jour %> <%= heure %> – <%= titreRapport %>
+                    </p>
+                    <% } else if (dernierRapportAvecLimite != null && dernierRapportAvecLimite.getDateLimite() != null) {
+                        String jour = sdfJour.format(dernierRapportAvecLimite.getDateLimite());
+                        String heure = sdfHeure.format(dernierRapportAvecLimite.getDateLimite());
+                        String titreRapport = dernierRapportAvecLimite.getTitre() != null ? dernierRapportAvecLimite.getTitre() : "Devoir";
+                    %>
+                    <p class="text-sm text-gray-600 mb-2">
+                        <span class="font-medium text-gray-700">Date limite :</span> <%= jour %> <%= heure %> – <%= titreRapport %> <span class="text-amber-600">(dépassée)</span>
+                    </p>
+                    <% } %>
+                    <% if (!canDepotModule) { %>
+                    <p class="text-xs text-amber-600 font-medium mb-2">⏰ Date limite dépassée pour ce module.</p>
+                    <% } %>
                     <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form&moduleId=<%= m.getId() %>"
-                       class="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition text-sm font-medium">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Déposer un TP
                     </a>
-                    <% } else { %>
-                    <p class="text-xs text-amber-600 font-medium">⏰ Date limite dépassée pour ce module. Déposer ou modifier un TP n'est plus possible.</p>
-                    <% } %>
-                    <% } else { %>
-                    <p class="text-sm text-gray-500 mb-2">Aucun support déposé pour ce module.</p>
-                    <% if (canDepotModule) { %>
-                    <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form&moduleId=<%= m.getId() %>"
-                       class="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        Déposer un TP
-                    </a>
-                    <% } %>
-                    <% } %>
                 </div>
             </div>
             <% } %>
         </div>
         <% } %>
     </div>
+    <% } %>
 
-    <%-- En-tête --%>
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h2 class="text-2xl font-bold text-primary">Mes Travaux Pratiques</h2>
-            <p class="text-gray-400 text-sm mt-1">
-                <%= travaux != null ? travaux.size() : 0 %> TP<%= (travaux != null && travaux.size() > 1) ? "s" : "" %> soumis
-            </p>
+    <%-- Section Devoirs annoncés – flux type Classroom --%>
+    <% if ("devoirs".equals(section)) { %>
+    <div id="devoirsSection" class="mb-8">
+        <h2 class="text-xl font-bold text-primary mb-4">Mes TPs – Devoirs annoncés</h2>
+        <% if (rapports == null || rapports.isEmpty()) { %>
+        <div class="bg-white rounded-xl shadow border border-gray-100 p-12 text-center text-gray-400">
+            <p class="font-medium">Aucun devoir annoncé pour vos modules.</p>
         </div>
-        <div class="text-right">
-            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form"
-               class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg
-                      hover:bg-blue-900 transition text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Déposer ou modifier un TP
-            </a>
-            <p class="text-xs text-gray-500 mt-1">Uniquement avant la date limite par module.</p>
-        </div>
-    </div>
-
-    <%-- Liste des TPs --%>
-    <% if (travaux == null || travaux.isEmpty()) { %>
-    <div class="bg-white rounded-xl shadow p-12 text-center text-gray-400">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        <p class="font-medium">Aucun TP déposé pour l'instant.</p>
-        <p class="text-sm mt-1">Commencez par déposer votre premier travail pratique.</p>
-        <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form"
-           class="inline-block mt-4 bg-primary text-white px-5 py-2 rounded-lg text-sm hover:bg-blue-900 transition">
-            Déposer un TP
-        </a>
-    </div>
-    <% } else { %>
-    <div class="space-y-3">
-        <% for (TravailPratique tp : travaux) {
-            String statutColor = "bg-gray-100 text-gray-600";
-            String statutLabel = "Soumis";
-            switch (tp.getStatut()) {
-                case EN_CORRECTION: statutColor = "bg-yellow-100 text-yellow-700"; statutLabel = "En correction"; break;
-                case CORRIGE:       statutColor = "bg-green-100 text-green-700";   statutLabel = "Corrigé"; break;
-                case RENDU:         statutColor = "bg-blue-100 text-blue-700";     statutLabel = "Rendu"; break;
-            }
-        %>
-        <div class="bg-white rounded-xl shadow hover:shadow-md transition border border-gray-100">
-            <div class="p-5 flex items-start gap-4">
-                <%-- Icône fichier --%>
-                <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                </div>
-                <%-- Contenu --%>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-start justify-between gap-2">
-                        <div>
-                            <h3 class="font-bold text-gray-800">
-                                <%= tp.getTitre() %>
-                                <% if (tp.getVersion() > 1) { %>
-                                <span class="text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded ml-1">
-                                    v<%= tp.getVersion() %>
-                                </span>
-                                <% } %>
-                            </h3>
-                            <p class="text-sm text-gray-500 mt-0.5">
-                                📚 <%= tp.getModule() != null ? tp.getModule().getNom() : "–" %>
-                            </p>
+        <% } else { %>
+        <div class="space-y-4">
+            <% for (Rapport r : rapports) {
+                if (r.getModule() == null) continue;
+                String auteurNom = (r.getModule().getEnseignant() != null) ? r.getModule().getEnseignant().getNomComplet() : "Enseignant";
+                String datePubli = r.getDateCreation() != null ? sdfCourt.format(r.getDateCreation()) : "";
+            %>
+            <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden hover:shadow-md transition">
+                <div class="p-5">
+                    <div class="flex items-start gap-3">
+                        <%-- Avatar type document (devoir) --%>
+                        <div class="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
                         </div>
-                        <span class="<%= statutColor %> text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0">
-                            <%= statutLabel %>
-                        </span>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-gray-800"><%= auteurNom %> a publié un nouveau devoir : <%= r.getTitre() != null ? r.getTitre() : "Devoir" %></p>
+                            <p class="text-sm text-gray-500 mt-0.5">Publié le <%= datePubli %></p>
+                            <% if (r.getDateLimite() != null) {
+                                String dateLimStr = sdfCourt.format(r.getDateLimite()) + " " + sdfHeure.format(r.getDateLimite());
+                            %>
+                            <p class="text-sm text-amber-600 font-medium mt-1">Date limite : <%= dateLimStr %></p>
+                            <% } %>
+                        </div>
+                        <button type="button" class="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex-shrink-0" aria-label="Options">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                        </button>
                     </div>
-                    <div class="flex items-center gap-4 mt-2">
-                        <span class="text-xs text-gray-400">
-                            📅 <%= sdf.format(tp.getDateSoumission()) %>
-                        </span>
-                        <% if (tp.getNomFichier() != null) { %>
-                        <span class="text-xs text-gray-400">
-                            📎 <%= tp.getNomFichier() %>
-                        </span>
-                        <% } %>
-                        <% if (tp.getNote() != null) { %>
-                        <span class="text-xs font-bold text-green-600">
-                            ⭐ <%= tp.getNote() %>/20
-                        </span>
-                        <% } %>
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex justify-center">
+                        <a href="<%= ctx %>/etudiant/DepotTPServlet?action=voir-devoir&rapportId=<%= r.getId() %>"
+                           class="inline-flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition text-sm font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                            Voir le devoir
+                        </a>
                     </div>
-                </div>
-                <%-- Actions --%>
-                <div class="flex gap-2 flex-shrink-0">
-                    <a href="<%= ctx %>/etudiant/DepotTPServlet?action=detail&id=<%= tp.getId() %>"
-                       class="px-3 py-1.5 text-xs bg-primary text-white rounded-lg hover:bg-blue-900 transition">
-                        Voir
-                    </a>
-                    <%
-                        boolean canUpdate = true;
-                        if (tp.getModule() != null && rapports != null) {
-                            Date maxLimite = null;
-                            for (Rapport r : rapports) {
-                                if (r.getModule() != null && r.getModule().getId().equals(tp.getModule().getId()) && r.getDateLimite() != null) {
-                                    if (maxLimite == null || r.getDateLimite().after(maxLimite)) maxLimite = r.getDateLimite();
-                                }
-                            }
-                            if (maxLimite != null && now.after(maxLimite)) canUpdate = false;
-                        }
-                    %>
-                    <% if (tp.getStatut() == TravailPratique.Statut.SOUMIS) { %>
-                    <% if (canUpdate) { %>
-                    <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form&id=<%= tp.getId() %>"
-                       class="px-3 py-1.5 text-xs border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition">
-                        Nouvelle version
-                    </a>
-                    <a href="<%= ctx %>/etudiant/DepotTPServlet?action=supprimer&id=<%= tp.getId() %>"
-                       onclick="return confirm('Supprimer ce TP ?');"
-                       class="px-3 py-1.5 text-xs border border-red-200 text-red-500 rounded-lg hover:bg-red-50 transition">
-                        Retirer
-                    </a>
-                    <% } else { %>
-                    <span class="px-3 py-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg" title="Date limite dépassée">Modification non autorisée</span>
-                    <% } %>
-                    <% } %>
                 </div>
             </div>
+            <% } %>
         </div>
         <% } %>
     </div>
     <% } %>
+
+    <%-- Section Feedback des TPs – flux type Classroom --%>
+    <% if ("feedback".equals(section)) { %>
+    <div id="feedbackSection" class="mb-8">
+        <h2 class="text-xl font-bold text-primary mb-4">Feedback des TPs</h2>
+        <p class="text-gray-500 text-sm mb-4">Vos TPs déposés : corrigés (avec note) ou en attente.</p>
+        <form method="get" action="<%= ctx %>/etudiant/DepotTPServlet" class="flex flex-wrap gap-3 items-end mb-4 p-3 bg-gray-50 rounded-lg">
+            <input type="hidden" name="action" value="list"/>
+            <input type="hidden" name="section" value="feedback"/>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Module</label>
+                <select name="moduleId" class="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                    <option value="">Tous</option>
+                    <% if (modules != null) for (model.Module m : modules) { %>
+                    <option value="<%= m.getId() %>"<%= (moduleFiltreId != null && moduleFiltreId.equals(m.getId())) ? " selected" : "" %>><%= m.getNom() %></option>
+                    <% } %>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Statut</label>
+                <select name="statut" class="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                    <option value="">Tous</option>
+                    <option value="SOUMIS"<%= "SOUMIS".equals(filtreStatut) ? " selected" : "" %>>Soumis</option>
+                    <option value="EN_CORRECTION"<%= "EN_CORRECTION".equals(filtreStatut) ? " selected" : "" %>>En correction</option>
+                    <option value="CORRIGE"<%= "CORRIGE".equals(filtreStatut) ? " selected" : "" %>>Corrigé</option>
+                    <option value="RENDU"<%= "RENDU".equals(filtreStatut) ? " selected" : "" %>>Rendu</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date dépôt (début)</label>
+                <input type="date" name="dateMin" value="<%= filtreDateMin != null ? filtreDateMin : "" %>" class="border border-gray-300 rounded px-2 py-1.5 text-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date dépôt (fin)</label>
+                <input type="date" name="dateMax" value="<%= filtreDateMax != null ? filtreDateMax : "" %>" class="border border-gray-300 rounded px-2 py-1.5 text-sm"/>
+            </div>
+            <button type="submit" class="px-3 py-1.5 bg-primary text-white text-sm rounded hover:bg-blue-900 transition">Filtrer</button>
+        </form>
+        <% if (travaux == null || travaux.isEmpty()) { %>
+        <div class="bg-white rounded-xl shadow border border-gray-100 p-12 text-center text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p class="font-medium">Aucun TP déposé.</p>
+            <p class="text-sm mt-1">Les retours des enseignants apparaîtront ici une fois vos TPs corrigés.</p>
+        </div>
+        <% } else { %>
+        <div class="space-y-4">
+            <% for (TravailPratique tp : travaux) {
+                String statutColor = "bg-gray-100 text-gray-600";
+                String statutLabel = "Soumis";
+                switch (tp.getStatut()) {
+                    case EN_CORRECTION: statutColor = "bg-yellow-100 text-yellow-700"; statutLabel = "En correction"; break;
+                    case CORRIGE:       statutColor = "bg-green-100 text-green-700";   statutLabel = "Corrigé"; break;
+                    case RENDU:         statutColor = "bg-blue-100 text-blue-700";     statutLabel = "Rendu"; break;
+                }
+                String enseignantNom = (tp.getModule() != null && tp.getModule().getEnseignant() != null) ? tp.getModule().getEnseignant().getNomComplet() : "";
+                String dateDepot = tp.getDateSoumission() != null ? sdfCourt.format(tp.getDateSoumission()) : "";
+                boolean canNewVersion = false;
+                if (tp.getStatut() == TravailPratique.Statut.SOUMIS && tp.getModule() != null && rapports != null) {
+                    java.util.Date maxLimiteMod = null;
+                    for (Rapport r : rapports) {
+                        if (r.getModule() != null && r.getModule().getId().equals(tp.getModule().getId()) && r.getDateLimite() != null) {
+                            if (maxLimiteMod == null || r.getDateLimite().after(maxLimiteMod)) maxLimiteMod = r.getDateLimite();
+                        }
+                    }
+                    if (maxLimiteMod == null || now.before(maxLimiteMod)) canNewVersion = true;
+                }
+            %>
+            <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden hover:shadow-md transition">
+                <div class="p-5">
+                    <div class="flex items-start gap-3">
+                        <%-- Avatar document (TP) --%>
+                        <div class="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-gray-800"><%= tp.getModule() != null ? tp.getModule().getNom() : "Module" %> – <%= tp.getTitre() != null ? tp.getTitre() : "TP" %></p>
+                            <% if (enseignantNom != null && !enseignantNom.isEmpty()) { %>
+                            <p class="text-sm text-gray-500 mt-0.5"><%= enseignantNom %></p>
+                            <% } %>
+                            <p class="text-sm text-gray-400 mt-0.5"><%= dateDepot %></p>
+                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                                <span class="text-xs text-gray-500 font-medium">Version <%= tp.getVersion() %></span>
+                                <span class="<%= statutColor %> text-xs px-2 py-1 rounded-full font-medium"><%= statutLabel %></span>
+                                <% if (tp.getNote() != null) { %>
+                                <span class="text-sm font-semibold text-green-600"><%= tp.getNote() %>/20</span>
+                                <% } else { %>
+                                <span class="text-xs text-amber-600 font-medium">Pas encore noté</span>
+                                <% } %>
+                            </div>
+                        </div>
+                        <button type="button" class="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex-shrink-0" aria-label="Options">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                        </button>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex justify-center gap-3 flex-wrap">
+                        <a href="<%= ctx %>/etudiant/DepotTPServlet?action=detail&id=<%= tp.getId() %>"
+                           class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-900 transition text-sm font-medium">
+                            Voir
+                        </a>
+                        <% if (canNewVersion) { %>
+                        <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form&id=<%= tp.getId() %>"
+                           class="inline-flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition text-sm font-medium">
+                            Nouvelle version
+                        </a>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <% } %>
+    </div>
+    <% } %>
+
     </main>
 </div>
-</main>
 
 <script>
     let notifLoaded = false;
@@ -402,7 +457,8 @@
                         '<p class="text-xs text-gray-400 mt-0.5">' + (n.date||'') + '</p>' +
                         (n.replyUrl ? '<p class="text-xs text-primary font-medium mt-1">Cliquez pour répondre →</p>' : '');
                     const cls = 'px-4 py-3 hover:bg-gray-50 ' + (n.lu ? '' : 'bg-blue-50');
-                    return n.replyUrl ? '<a href="' + n.replyUrl + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
+                    var url = n.replyUrl || n.markReadUrl;
+                    return url ? '<a href="' + url + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
                 }).join('');
                 // Mettre à jour le badge
                 const badge = document.getElementById('notifBadge');
@@ -418,12 +474,19 @@
             });
     }
 
-    // Fermer le panel si clic extérieur
+    function toggleProfilePanel() {
+        document.getElementById('profilePanel').classList.toggle('hidden');
+    }
     document.addEventListener('click', function(e) {
         const panel = document.getElementById('notifPanel');
         const btn = document.getElementById('notifBtn');
         if (!panel.contains(e.target) && !btn.contains(e.target)) {
             panel.classList.add('hidden');
+        }
+        const profilePanel = document.getElementById('profilePanel');
+        const profileBtn = document.querySelector('button[onclick="toggleProfilePanel()"]');
+        if (profilePanel && profileBtn && !profilePanel.contains(e.target) && !profileBtn.contains(e.target)) {
+            profilePanel.classList.add('hidden');
         }
     });
 </script>

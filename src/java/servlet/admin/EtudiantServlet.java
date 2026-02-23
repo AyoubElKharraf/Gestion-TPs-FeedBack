@@ -1,5 +1,6 @@
 package servlet.admin;
 
+import dao.AbsenceReportDAO;
 import dao.EtudiantDAO;
 import dao.NotificationDAO;
 import dao.TravailPratiqueDAO;
@@ -8,6 +9,7 @@ import model.Enseignant;
 import model.Etudiant;
 import model.Notification;
 import model.Utilisateur;
+import util.AbsenceIntegrationService;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -80,6 +82,24 @@ public class EtudiantServlet extends HttpServlet {
                 req.setAttribute("activeSection", "etudiants");
                 req.getRequestDispatcher("/WEB-INF/vues/admin/etudiants.jsp").forward(req, resp);
                 break;
+            }
+
+            // ---- Signaler au système d'absences (étudiant avec 3+ déclarations) ----
+            case "signaler-absence": {
+                String idStr = req.getParameter("id");
+                if (idStr == null || idStr.isEmpty()) {
+                    resp.sendRedirect(ctx + "/admin/EtudiantServlet?action=list");
+                    return;
+                }
+                Long id = Long.parseLong(idStr);
+                Etudiant e = etudiantDAO.findById(id);
+                if (e == null || !e.isASupprimer()) {
+                    resp.sendRedirect(ctx + "/admin/EtudiantServlet?action=list");
+                    return;
+                }
+                AbsenceIntegrationService.notifyDepassementAbsences(id);
+                resp.sendRedirect(ctx + "/admin/EtudiantServlet?action=list&signale-absence=1");
+                return;
             }
 
             // ---- DÉTAIL ----
@@ -180,7 +200,7 @@ public class EtudiantServlet extends HttpServlet {
             etudiant.setPrenom(prenom.trim());
             etudiant.setEmail(email.trim());
             if (motDePasse != null && !motDePasse.trim().isEmpty()) {
-                etudiant.setMotDePasse(motDePasse);
+                etudiant.setMotDePasse(util.PasswordUtil.hash(motDePasse));
             }
             etudiant.setFiliere(filiere != null ? filiere.trim() : "M2I");
             etudiant.setNumeroEtudiant(numero != null ? numero.trim() : "");

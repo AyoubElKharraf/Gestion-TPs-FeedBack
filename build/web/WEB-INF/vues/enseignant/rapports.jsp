@@ -40,7 +40,7 @@
         </button>
         <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "EN" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "EN" %>
             </div>
             <span class="text-sm font-medium hidden md:block"><%= userSession != null ? userSession.getNomComplet() : "Enseignant" %></span>
         </button>
@@ -116,74 +116,37 @@
         <div class="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-lg mb-4 text-sm">Rapport supprimé.</div>
         <% } %>
         <% if (error) { %>
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">Veuillez remplir le titre, choisir un module et joindre un fichier.</div>
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">Veuillez remplir le titre et joindre un fichier.</div>
         <% } %>
-        <% if (modules == null || modules.isEmpty()) { %>
-        <div class="bg-white rounded-xl shadow p-8 text-center text-gray-500">Aucun module assigné. Contactez l'administrateur.</div>
-        <% } else { %>
-        <div class="space-y-6">
-            <% for (Module m : modules) {
-                java.util.List<Rapport> rapportsDuModule = new java.util.ArrayList<>();
-                if (rapports != null) {
-                    for (Rapport r : rapports) {
-                        if (r.getModule() != null && r.getModule().getId().equals(m.getId())) rapportsDuModule.add(r);
-                    }
-                }
-            %>
-            <div class="bg-white rounded-xl shadow border border-gray-100 p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="font-bold text-primary text-lg"><%= m.getNom() %></h2>
+
+        <%-- Uniquement le formulaire "Déposer un nouveau rapport" (affichage du haut) --%>
+        <% if (modules != null && !modules.isEmpty()) { %>
+        <div class="bg-white rounded-xl shadow border border-gray-200 p-5">
+            <h2 class="text-lg font-semibold text-primary mb-4">Déposer un nouveau rapport :</h2>
+            <form action="<%= ctx %>/enseignant/RapportServlet" method="post" enctype="multipart/form-data" class="flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[220px]">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Titre du rapport</label>
+                    <input type="text" name="titre" required placeholder="ex. Sujet TP1 - Consignes"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"/>
                 </div>
-                <% if (!rapportsDuModule.isEmpty()) { %>
-                <p class="text-xs font-medium text-gray-500 mb-2">Rapports déposés (<%= rapportsDuModule.size() %>)</p>
-                <ul class="space-y-2 mb-4">
-                    <% for (Rapport rapp : rapportsDuModule) { %>
-                    <li class="flex items-center justify-between gap-2 py-2 border-b border-gray-100 last:border-0">
-                        <div>
-                            <strong><%= rapp.getTitre() %></strong><% if (rapp.getFileName() != null) { %> — <%= rapp.getFileName() %><% } %>
-                            <span class="text-xs text-gray-400 ml-2"><%= sdf.format(rapp.getDateCreation()) %></span>
-                            <% if (rapp.getDateLimite() != null) { %>
-                            <span class="text-xs text-amber-600 ml-2">Limite : <%= sdf.format(rapp.getDateLimite()) %></span>
-                            <% } %>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <a href="<%= ctx %>/RapportDownloadServlet?id=<%= rapp.getId() %>"
-                               class="px-2 py-1 text-sm bg-primary text-white rounded hover:bg-blue-900 transition">Télécharger</a>
-                            <a href="<%= ctx %>/enseignant/RapportServlet?action=delete&id=<%= rapp.getId() %>"
-                               onclick="return confirm('Supprimer ce rapport ?');"
-                               class="px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition">Supprimer</a>
-                        </div>
-                    </li>
-                    <% } %>
-                </ul>
-                <% } else { %>
-                <p class="text-sm text-gray-500 mb-3">Aucun rapport déposé pour ce module.</p>
-                <% } %>
-                <p class="text-xs text-gray-400 mb-2">Déposer un nouveau rapport :</p>
-                <form action="<%= ctx %>/enseignant/RapportServlet" method="post" enctype="multipart/form-data" class="flex flex-wrap gap-3 items-end">
-                    <input type="hidden" name="moduleId" value="<%= m.getId() %>"/>
-                    <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Titre du rapport</label>
-                        <input type="text" name="titre" required placeholder="ex. Sujet TP1 - Consignes"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"/>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Date limite (dépôt TP étudiant)</label>
-                        <input type="datetime-local" name="dateLimite"
-                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm"/>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Fichier (PDF, etc.)</label>
-                        <input type="file" name="fichier" required accept=".pdf,.doc,.docx,.txt"
-                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm"/>
-                    </div>
-                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-900 transition text-sm font-medium">
-                        Déposer
-                    </button>
-                </form>
-            </div>
-            <% } %>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Date limite (dépôt TP étudiant)</label>
+                    <input type="datetime-local" name="dateLimite"
+                           class="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                           placeholder="jj/mm/aaaa --:--"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Fichier (PDF, etc.)</label>
+                    <input type="file" name="fichier" required accept=".pdf,.doc,.docx,.txt"
+                           class="border border-gray-300 rounded-lg px-3 py-2 text-sm"/>
+                </div>
+                <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-900 transition text-sm font-medium whitespace-nowrap">
+                    Déposer
+                </button>
+            </form>
         </div>
+        <% } else { %>
+        <div class="bg-white rounded-xl shadow p-8 text-center text-gray-500">Aucun module assigné. Contactez l'administrateur.</div>
         <% } %>
     </main>
 </div>

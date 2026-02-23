@@ -41,7 +41,7 @@
         </button>
         <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2 p-1 rounded-full hover:bg-blue-900 transition">
             <div class="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-xs">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "EN" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "EN" %>
             </div>
         </button>
     </div>
@@ -150,7 +150,7 @@
                     <span class="flex items-center gap-1">
                         <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center
                                     text-xs font-bold text-green-700">
-                            <%= String.valueOf(tp.getEtudiant().getPrenom().charAt(0)).toUpperCase() %>
+                            <%= (tp.getEtudiant().getPrenom() != null && !tp.getEtudiant().getPrenom().isEmpty()) ? String.valueOf(tp.getEtudiant().getPrenom().charAt(0)).toUpperCase() : "?" %>
                         </div>
                         <%= tp.getEtudiant().getNomComplet() %>
                     </span>
@@ -260,7 +260,7 @@
             <div class="flex gap-3 <%= isEns ? "flex-row-reverse" : "flex-row" %>">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
                             <%= isEns ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700" %>">
-                    <%= c.getAuteur() != null ? String.valueOf(c.getAuteur().getPrenom().charAt(0)).toUpperCase() : "?" %>
+                    <%= (c.getAuteur() != null && c.getAuteur().getPrenom() != null && !c.getAuteur().getPrenom().isEmpty()) ? String.valueOf(c.getAuteur().getPrenom().charAt(0)).toUpperCase() : "?" %>
                 </div>
                 <div class="max-w-xs">
                     <div class="<%= isEns ? "bg-purple-50 border border-purple-100" : "bg-gray-50 border border-gray-200" %>

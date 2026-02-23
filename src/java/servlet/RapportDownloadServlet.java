@@ -1,6 +1,8 @@
 package servlet;
 
+import dao.EtudiantDAO;
 import dao.RapportDAO;
+import model.Etudiant;
 import model.Rapport;
 import model.Utilisateur;
 import jakarta.servlet.ServletException;
@@ -20,6 +22,7 @@ import java.io.OutputStream;
 public class RapportDownloadServlet extends HttpServlet {
 
     private final RapportDAO rapportDAO = new RapportDAO();
+    private final EtudiantDAO etudiantDAO = new EtudiantDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -48,7 +51,11 @@ public class RapportDownloadServlet extends HttpServlet {
             case ADMIN -> allowed = true;
             case ENSEIGNANT -> allowed = r.getModule() != null && r.getModule().getEnseignant() != null
                 && r.getModule().getEnseignant().getId().equals(u.getId());
-            case ETUDIANT -> allowed = true;
+            case ETUDIANT -> {
+                Etudiant etu = etudiantDAO.findById(u.getId());
+                allowed = etu != null && r.getModule() != null
+                    && (r.getModule().getFiliere() == null || (etu.getFiliere() != null && r.getModule().getFiliere().equals(etu.getFiliere())));
+            }
         }
         if (!allowed) {
             resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Accès refusé");

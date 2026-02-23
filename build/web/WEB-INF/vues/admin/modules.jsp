@@ -9,6 +9,7 @@
     boolean success = "1".equals(request.getParameter("success"));
     boolean deleted = "1".equals(request.getParameter("deleted"));
     boolean notfound = "1".equals(request.getParameter("notfound"));
+    boolean nonRemisChecked = "1".equals(request.getParameter("nonRemisChecked"));
 %>
 <!DOCTYPE html>
 <html lang="fr">
@@ -49,7 +50,7 @@
         </button>
         <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? userSession.getPrenom().charAt(0) + "" + userSession.getNom().charAt(0) : "AD" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "AD" %>
             </div>
             <span class="text-sm font-medium hidden md:block"><%= userSession != null ? userSession.getNomComplet() : "Admin" %></span>
         </button>
@@ -154,6 +155,11 @@
             ⚠️ Module introuvable.
         </div>
         <% } %>
+        <% if (nonRemisChecked) { %>
+        <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-4 text-sm">
+            Vérification effectuée : alertes TPs non rendus envoyées au système d'absences (si configuré).
+        </div>
+        <% } %>
 
         <!-- En-tête section -->
         <div class="flex items-center justify-between mb-6">
@@ -161,6 +167,7 @@
                 <h2 class="text-2xl font-bold text-primary">Modules – M2I</h2>
                 <p class="text-gray-400 text-sm mt-1">Gérer les modules de la filière M2I</p>
             </div>
+            <a href="<%= ctx %>/admin/CheckNonRemisServlet" class="text-sm text-primary hover:underline font-medium mr-4">Vérifier TPs non rendus → alerte absences</a>
             <a href="<%= ctx %>/admin/ModuleServlet?action=form"
                class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg
                       hover:bg-blue-900 transition text-sm font-medium">

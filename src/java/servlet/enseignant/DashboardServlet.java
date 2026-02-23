@@ -33,7 +33,12 @@ public class DashboardServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        Utilisateur u = (Utilisateur) req.getSession(false).getAttribute("utilisateur");
+        jakarta.servlet.http.HttpSession session = req.getSession(false);
+        if (session == null) {
+            resp.sendRedirect(req.getContextPath() + "/LoginServlet");
+            return;
+        }
+        Utilisateur u = (Utilisateur) session.getAttribute("utilisateur");
         if (u == null || u.getRole() != Utilisateur.Role.ENSEIGNANT) {
             resp.sendRedirect(req.getContextPath() + "/LoginServlet");
             return;
@@ -53,7 +58,7 @@ public class DashboardServlet extends HttpServlet {
             String moduleNom = r.getModule() != null ? r.getModule().getNom() : "";
             feedItems.add(new FeedItem(FeedItem.Type.RAPPORT, r.getDateCreation(), r.getTitre(),
                 "Support de cours • " + moduleNom, "Vous",
-                ctx + "/RapportDownloadServlet?id=" + r.getId(), "Télécharger", r.getId()));
+                ctx + "/enseignant/RapportServlet", "Voir", r.getId()));
         }
         for (TravailPratique t : travaux) {
             String etu = t.getEtudiant() != null ? t.getEtudiant().getNomComplet() : "Étudiant";

@@ -42,7 +42,7 @@
         </button>
         <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "EN" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "EN" %>
             </div>
             <span class="text-sm font-medium hidden md:block"><%= userSession != null ? userSession.getNomComplet() : "Enseignant" %></span>
         </button>
@@ -137,68 +137,42 @@
             <p class="text-gray-500 text-sm mt-1">Bienvenue, <%= userSession != null ? userSession.getNomComplet() : "" %></p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <a href="<%= ctx %>/enseignant/CorrectionTPServlet?action=list" class="bg-white rounded-xl shadow p-5 border-l-4 border-primary hover:shadow-md transition block">
-                <p class="text-sm text-gray-500">TPs à corriger</p>
-                <p class="text-3xl font-bold text-primary mt-1"><%= nbSoumis != null ? nbSoumis : 0 %></p>
-            </a>
-            <div class="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
-                <p class="text-sm text-gray-500">Total TPs (mes modules)</p>
-                <p class="text-3xl font-bold text-green-600 mt-1"><%= travaux != null ? travaux.size() : 0 %></p>
-            </div>
-            <div class="bg-white rounded-xl shadow p-5 border-l-4 border-blue-400">
-                <p class="text-sm text-gray-500">Notifications</p>
-                <p class="text-3xl font-bold text-blue-500 mt-1"><%= nbNotifs != null ? nbNotifs : 0 %></p>
-            </div>
-        </div>
-
         <%-- Fil d'activité (rapports publiés + TPs déposés par les étudiants) --%>
-        <div class="bg-white rounded-xl shadow p-6 mb-6">
-            <h3 class="font-bold text-primary mb-4">Fil d'activité</h3>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-6">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-blue-50">
+                <h3 class="font-bold text-lg text-primary">Fil d'activité</h3>
+                <p class="text-gray-500 text-sm mt-0.5">Rapports et TPs récents</p>
+            </div>
+            <div class="p-6">
             <% if (feedItems == null || feedItems.isEmpty()) { %>
-            <p class="text-gray-400 text-sm">Aucune activité récente.</p>
+            <p class="text-gray-400 text-sm py-4">Aucune activité récente.</p>
             <% } else { %>
-            <div class="space-y-3">
+            <div class="space-y-2">
                 <% for (FeedItem item : feedItems) {
                     boolean isRapport = (item.getType() == FeedItem.Type.RAPPORT);
+                    String iconBg = isRapport ? "bg-blue-500/10 text-blue-600" : "bg-amber-500/10 text-amber-600";
+                    String btnClass = isRapport ? "bg-primary hover:bg-blue-900 text-white" : "bg-amber-500 hover:bg-amber-600 text-white";
                 %>
-                <div class="flex gap-4 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 <%= isRapport ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600" %>">
+                <div class="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200 bg-gray-50/30">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm <%= iconBg %>">
                         <% if (isRapport) { %>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                         <% } else { %>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         <% } %>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-800"><%= item.getTitle() %></p>
-                        <p class="text-xs text-gray-500 mt-0.5"><%= item.getAuthorName() %> · <%= item.getSubtitle() %></p>
-                        <p class="text-xs text-gray-400 mt-0.5"><%= item.getDate() != null ? sdf.format(item.getDate()) : "" %></p>
+                        <p class="font-semibold text-gray-800"><%= item.getTitle() %></p>
+                        <p class="text-sm text-gray-500 mt-0.5"><%= item.getAuthorName() %> · <%= item.getSubtitle() %></p>
+                        <p class="text-xs text-gray-400 mt-1"><%= item.getDate() != null ? sdf.format(item.getDate()) : "" %></p>
                     </div>
-                    <a href="<%= item.getActionUrl() %>" class="flex-shrink-0 px-3 py-1.5 bg-primary text-white text-xs rounded-lg hover:bg-blue-900 transition">
+                    <a href="<%= item.getActionUrl() %>" class="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition <%= btnClass %>">
                         <%= item.getActionLabel() %>
                     </a>
                 </div>
                 <% } %>
             </div>
             <% } %>
-        </div>
-
-        <div class="bg-white rounded-xl shadow p-6">
-            <h3 class="font-bold text-primary mb-4">Accès rapide</h3>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <a href="<%= ctx %>/enseignant/CorrectionTPServlet?action=list" class="border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow transition block">
-                    <p class="font-semibold text-primary text-sm">TPs à corriger</p>
-                    <p class="text-xs text-gray-400 mt-1">Voir et noter les dépôts</p>
-                </a>
-                <a href="<%= ctx %>/enseignant/CommentaireServlet" class="border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow transition block">
-                    <p class="font-semibold text-primary text-sm">Commentaires</p>
-                    <p class="text-xs text-gray-400 mt-1">Échanges avec les étudiants</p>
-                </a>
-                <a href="<%= ctx %>/enseignant/AbsenceServlet" class="border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow transition block">
-                    <p class="font-semibold text-primary text-sm">Absences</p>
-                    <p class="text-xs text-gray-400 mt-1">Gestion des absences</p>
-                </a>
             </div>
         </div>
     </main>
@@ -221,7 +195,8 @@
                     var de = (n.expediteur ? '<p class="text-xs text-gray-500">De: ' + n.expediteur + '</p>' : '');
                     var content = de + '<p class="text-sm text-gray-700">' + (n.message||'') + '</p><p class="text-xs text-gray-400 mt-0.5">' + (n.date||'') + '</p>' + (n.replyUrl ? '<p class="text-xs text-primary font-medium mt-1">Cliquez pour répondre →</p>' : '');
                     var cls = 'px-4 py-3 hover:bg-gray-50 ' + (n.lu ? '' : 'bg-blue-50');
-                    return n.replyUrl ? '<a href="' + n.replyUrl + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
+                    var url = n.replyUrl || n.markReadUrl;
+                    return url ? '<a href="' + url + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
                 }).join('');
                 const badge = document.getElementById('notifBadge');
                 const nonLues = data.filter(n => !n.lu).length;

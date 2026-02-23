@@ -33,7 +33,7 @@
     <div class="bg-white rounded-xl shadow p-10 text-center max-w-md">
         <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span class="text-3xl font-bold text-green-600">
-                <%= u != null ? u.getPrenom().charAt(0) + "" + u.getNom().charAt(0) : "ET" %>
+                <%= u != null && u.getPrenom() != null && u.getNom() != null ? String.valueOf(u.getPrenom().charAt(0)) + String.valueOf(u.getNom().charAt(0)) : "ET" %>
             </span>
         </div>
         <h2 class="text-xl font-bold text-primary mb-2">

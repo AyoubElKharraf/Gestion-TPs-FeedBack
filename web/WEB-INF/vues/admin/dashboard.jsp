@@ -61,7 +61,7 @@
                 class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center
                         font-bold text-white text-sm">
-                <%= userSession != null ? userSession.getPrenom().charAt(0) + "" + userSession.getNom().charAt(0) : "AD" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "AD" %>
             </div>
             <span class="text-sm font-medium hidden md:block">
                 <%= userSession != null ? userSession.getNomComplet() : "Admin" %>

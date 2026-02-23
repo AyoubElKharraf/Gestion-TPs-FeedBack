@@ -58,6 +58,11 @@ public class DepotTPServlet extends HttpServlet {
         switch (action) {
 
             case "list": {
+                String sectionParam = req.getParameter("section");
+                if (sectionParam == null || sectionParam.isEmpty()) sectionParam = "modules";
+                if (!sectionParam.equals("modules") && !sectionParam.equals("devoirs") && !sectionParam.equals("feedback")) {
+                    sectionParam = "modules";
+                }
                 List<TravailPratique> travaux = tpDAO.findByEtudiant(etudiant.getId());
                 String moduleIdParam = req.getParameter("moduleId");
                 Long moduleFiltreId = null;
@@ -67,6 +72,33 @@ public class DepotTPServlet extends HttpServlet {
                         Long finalModuleId = moduleFiltreId;
                         travaux.removeIf(t -> t.getModule() == null || !t.getModule().getId().equals(finalModuleId));
                     } catch (NumberFormatException ignored) {}
+                }
+                String statutParam = req.getParameter("statut");
+                if (statutParam != null && !statutParam.isEmpty()) {
+                    try {
+                        TravailPratique.Statut s = TravailPratique.Statut.valueOf(statutParam);
+                        TravailPratique.Statut finalS = s;
+                        travaux.removeIf(t -> t.getStatut() != finalS);
+                    } catch (IllegalArgumentException ignored) {}
+                }
+                String dateMinParam = req.getParameter("dateMin");
+                String dateMaxParam = req.getParameter("dateMax");
+                if (dateMinParam != null && !dateMinParam.isEmpty()) {
+                    try {
+                        java.util.Date dateMin = new SimpleDateFormat("yyyy-MM-dd").parse(dateMinParam);
+                        java.util.Date finalDateMin = dateMin;
+                        travaux.removeIf(t -> t.getDateSoumission() == null || t.getDateSoumission().before(finalDateMin));
+                    } catch (Exception ignored) {}
+                }
+                if (dateMaxParam != null && !dateMaxParam.isEmpty()) {
+                    try {
+                        java.util.Date dateMax = new SimpleDateFormat("yyyy-MM-dd").parse(dateMaxParam);
+                        java.util.Calendar cal = java.util.Calendar.getInstance();
+                        cal.setTime(dateMax);
+                        cal.add(java.util.Calendar.DAY_OF_MONTH, 1);
+                        java.util.Date endOfDay = cal.getTime();
+                        travaux.removeIf(t -> t.getDateSoumission() == null || !t.getDateSoumission().before(endOfDay));
+                    } catch (Exception ignored) {}
                 }
                 List<Module> modules = moduleDAO.findByFiliere(
                     etudiant.getFiliere() != null ? etudiant.getFiliere() : "M2I"
@@ -78,6 +110,10 @@ public class DepotTPServlet extends HttpServlet {
                 req.setAttribute("modules", modules);
                 req.setAttribute("rapports", rapports);
                 req.setAttribute("moduleFiltreId", moduleFiltreId);
+                req.setAttribute("filtreStatut", statutParam);
+                req.setAttribute("filtreDateMin", dateMinParam);
+                req.setAttribute("filtreDateMax", dateMaxParam);
+                req.setAttribute("section", sectionParam);
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
                 req.getRequestDispatcher("/WEB-INF/vues/etduaint/mes_tps.jsp").forward(req, resp);
                 break;
@@ -97,6 +133,7 @@ public class DepotTPServlet extends HttpServlet {
                     try { req.setAttribute("preselectedModuleId", Long.parseLong(moduleIdParam)); } catch (NumberFormatException ignored) {}
                 }
                 String rapportIdParam = req.getParameter("rapportId");
+                Long moduleIdPourLimite = null;
                 if (rapportIdParam != null && !rapportIdParam.isEmpty()) {
                     try {
                         Long rid = Long.parseLong(rapportIdParam);
@@ -105,21 +142,42 @@ public class DepotTPServlet extends HttpServlet {
                             java.util.List<Long> mids = new java.util.ArrayList<>();
                             for (Module m : modules) mids.add(m.getId());
                             if (mids.contains(r.getModule().getId())) {
+                                if (r.getDateLimite() != null && r.getDateLimite().before(new Date())) {
+                                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=devoirs&deadlineDepasse=1");
+                                    return;
+                                }
                                 req.setAttribute("preselectedModuleId", r.getModule().getId());
                                 req.setAttribute("preselectedRapportTitre", r.getTitre());
                                 req.setAttribute("preselectedRapportId", r.getId());
+                                moduleIdPourLimite = r.getModule().getId();
                             }
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (moduleIdPourLimite == null && moduleIdParam != null && !moduleIdParam.isEmpty()) {
+                    try {
+                        Long mid = Long.parseLong(moduleIdParam);
+                        java.util.Date dateLimiteModule = rapportDAO.getMaxDateLimiteForModule(mid);
+                        if (dateLimiteModule != null && new Date().after(dateLimiteModule)) {
+                            resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=devoirs&deadlineDepasse=1");
+                            return;
                         }
                     } catch (NumberFormatException ignored) {}
                 }
                 // Si id présent = nouvelle version d'un TP existant (autorisée seulement avant date limite)
                 String idParam = req.getParameter("id");
-                if (idParam != null) {
-                    TravailPratique tp = tpDAO.findById(Long.parseLong(idParam));
-                    if (tp != null && tp.getEtudiant().getId().equals(etudiant.getId())) {
+                if (idParam != null && !idParam.isEmpty()) {
+                    Long tpId = null;
+                    try { tpId = Long.parseLong(idParam); } catch (NumberFormatException ignored) {}
+                    if (tpId != null) {
+                        TravailPratique tp = tpDAO.findById(tpId);
+                        if (tp == null || tp.getEtudiant() == null || !tp.getEtudiant().getId().equals(etudiant.getId())) {
+                            resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=feedback&forbidden=1");
+                            return;
+                        }
                         java.util.Date dateLimiteModule = tp.getModule() != null ? rapportDAO.getMaxDateLimiteForModule(tp.getModule().getId()) : null;
                         if (dateLimiteModule != null && new Date().after(dateLimiteModule)) {
-                            resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&deadlineDepasse=1");
+                            resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=feedback&deadlineDepasse=1");
                             return;
                         }
                         req.setAttribute("tpParent", tp);
@@ -149,10 +207,22 @@ public class DepotTPServlet extends HttpServlet {
                 }
                 java.util.List<TravailPratique> mesTps = tpDAO.findByEtudiant(etudiant.getId());
                 TravailPratique tpPourModule = null;
+                String rapportTitre = rapport.getTitre() != null ? rapport.getTitre().trim() : null;
                 for (TravailPratique t : mesTps) {
-                    if (t.getModule() != null && t.getModule().getId().equals(module.getId())) {
-                        tpPourModule = t;
-                        break;
+                    if (t.getModule() == null || !t.getModule().getId().equals(module.getId()))
+                        continue;
+                    String tpTitre = t.getTitre() != null ? t.getTitre().trim() : null;
+                    if (rapportTitre != null && tpTitre != null) {
+                        if (rapportTitre.equalsIgnoreCase(tpTitre)) {
+                            tpPourModule = t;
+                            break;
+                        }
+                        String normR = rapportTitre.toLowerCase().replace(" ", "_");
+                        String normT = tpTitre.toLowerCase().replace(" ", "_");
+                        if (normR.equals(normT)) {
+                            tpPourModule = t;
+                            break;
+                        }
                     }
                 }
                 req.setAttribute("rapport", rapport);
@@ -164,10 +234,15 @@ public class DepotTPServlet extends HttpServlet {
             }
 
             case "detail": {
-                Long id = Long.parseLong(req.getParameter("id"));
+                Long id = null;
+                try { id = Long.parseLong(req.getParameter("id")); } catch (NumberFormatException e) { id = null; }
+                if (id == null) {
+                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=feedback&notfound=1");
+                    return;
+                }
                 TravailPratique tp = tpDAO.findById(id);
-                if (tp == null || !tp.getEtudiant().getId().equals(etudiant.getId())) {
-                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&notfound=1");
+                if (tp == null || tp.getEtudiant() == null || !tp.getEtudiant().getId().equals(etudiant.getId())) {
+                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=feedback&notfound=1");
                     return;
                 }
                 boolean canUpdate = true;
@@ -186,15 +261,20 @@ public class DepotTPServlet extends HttpServlet {
             }
 
             case "supprimer": {
-                Long id = Long.parseLong(req.getParameter("id"));
+                Long id = null;
+                try { id = Long.parseLong(req.getParameter("id")); } catch (NumberFormatException e) { id = null; }
+                if (id == null) {
+                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=feedback&notfound=1");
+                    return;
+                }
                 TravailPratique tp = tpDAO.findById(id);
-                if (tp != null && tp.getEtudiant().getId().equals(etudiant.getId())
+                if (tp != null && tp.getEtudiant() != null && tp.getEtudiant().getId().equals(etudiant.getId())
                         && tp.getStatut() == TravailPratique.Statut.SOUMIS) {
                     FileUploadUtil.supprimer(tp.getCheminFichier());
                     tpDAO.delete(id);
-                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&deleted=1");
+                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=feedback&deleted=1");
                 } else {
-                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&erreur=suppression");
+                    resp.sendRedirect(ctx + "/etudiant/DepotTPServlet?action=list&section=feedback&erreur=suppression");
                 }
                 return;
             }

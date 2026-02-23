@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.*;
+import java.net.URLEncoder;
 import java.util.List;
 import model.Notification;
 
@@ -53,12 +54,20 @@ public class NotificationServlet extends HttpServlet {
                     if (i > 0) out.print(",");
                     String replyUrl = null;
                     if (n.getExpediteur() != null) {
+                        String targetUrl = null;
                         if (u.getRole() == Utilisateur.Role.ADMIN) {
-                            replyUrl = ctx + "/admin/MessageServlet?destinataireId=" + n.getExpediteur().getId();
-                        } else if (u.getRole() == Utilisateur.Role.ETUDIANT && n.getExpediteur().getRole() == Utilisateur.Role.ENSEIGNANT) {
-                            replyUrl = ctx + "/etudiant/MessageServlet?destinataireId=" + n.getExpediteur().getId();
+                            targetUrl = ctx + "/admin/MessageServlet?destinataireId=" + n.getExpediteur().getId();
+                        } else if (u.getRole() == Utilisateur.Role.ETUDIANT && (n.getExpediteur().getRole() == Utilisateur.Role.ENSEIGNANT || n.getExpediteur().getRole() == Utilisateur.Role.ADMIN)) {
+                            targetUrl = ctx + "/etudiant/MessageServlet?destinataireId=" + n.getExpediteur().getId();
                         } else if (u.getRole() == Utilisateur.Role.ENSEIGNANT && (n.getExpediteur().getRole() == Utilisateur.Role.ETUDIANT || n.getExpediteur().getRole() == Utilisateur.Role.ADMIN)) {
-                            replyUrl = ctx + "/enseignant/MessageServlet?destinataireId=" + n.getExpediteur().getId();
+                            targetUrl = ctx + "/enseignant/MessageServlet?destinataireId=" + n.getExpediteur().getId();
+                        }
+                        if (targetUrl != null) {
+                            try {
+                                replyUrl = ctx + "/NotificationServlet?action=lire&id=" + n.getId() + "&redirect=" + URLEncoder.encode(targetUrl, "UTF-8");
+                            } catch (UnsupportedEncodingException e) {
+                                replyUrl = targetUrl;
+                            }
                         }
                     }
                     out.print("{");
@@ -74,18 +83,24 @@ public class NotificationServlet extends HttpServlet {
                     if (replyUrl != null) {
                         out.print(",\"replyUrl\":\"" + escapeJson(replyUrl) + "\"");
                     }
+                    String markReadUrl = ctx + "/NotificationServlet?action=lire&id=" + n.getId();
+                    out.print(",\"markReadUrl\":\"" + escapeJson(markReadUrl) + "\"");
                     out.print("}");
                 }
                 out.print("]");
                 break;
             }
 
-            // Marquer une notification comme lue
+            // Marquer une notification comme lue (contrôle: elle doit appartenir au destinataire)
             case "lire": {
                 String idParam = req.getParameter("id");
-                if (idParam != null) notifDAO.marquerLue(Long.parseLong(idParam));
+                if (idParam != null) {
+                    try {
+                        notifDAO.marquerLue(Long.parseLong(idParam), u.getId());
+                    } catch (NumberFormatException ignored) {}
+                }
                 String redirect = req.getParameter("redirect");
-                if (redirect != null) {
+                if (redirect != null && !redirect.isEmpty()) {
                     resp.sendRedirect(redirect);
                 } else {
                     resp.sendRedirect(req.getContextPath() + "/NotificationServlet?action=list");

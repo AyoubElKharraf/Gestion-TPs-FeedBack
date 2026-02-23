@@ -42,7 +42,7 @@
         <div class="flex items-center gap-5">
             <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center
                         font-bold text-green-700 text-2xl flex-shrink-0">
-                <%= String.valueOf(etudiant.getPrenom().charAt(0)).toUpperCase() %><%= String.valueOf(etudiant.getNom().charAt(0)).toUpperCase() %>
+                <%= (etudiant.getPrenom() != null && !etudiant.getPrenom().isEmpty()) ? String.valueOf(etudiant.getPrenom().charAt(0)).toUpperCase() : "?" %><%= (etudiant.getNom() != null && !etudiant.getNom().isEmpty()) ? String.valueOf(etudiant.getNom().charAt(0)).toUpperCase() : "?" %>
             </div>
             <div class="flex-1">
                 <h2 class="text-2xl font-bold text-primary"><%= etudiant.getNomComplet() %></h2>

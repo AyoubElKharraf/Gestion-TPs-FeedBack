@@ -1,15 +1,25 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.Utilisateur, model.Enseignant, model.Etudiant, java.util.List" %>
+<%@ page import="model.Utilisateur, model.Enseignant, model.Etudiant, model.Notification, java.util.List, java.util.Map, java.text.SimpleDateFormat" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     List<Enseignant> enseignants = (List<Enseignant>) request.getAttribute("enseignants");
     List<Etudiant> etudiants = (List<Etudiant>) request.getAttribute("etudiants");
+    Map<Long, java.util.Date> lastMessageDateMap = (Map<Long, java.util.Date>) request.getAttribute("lastMessageDateMap");
+    Map<Long, Long> unreadCountMap = (Map<Long, Long>) request.getAttribute("unreadCountMap");
     Long preselectedDestinataireId = (Long) request.getAttribute("preselectedDestinataireId");
+    Utilisateur otherUser = (Utilisateur) request.getAttribute("otherUser");
+    List<Notification> conversation = (List<Notification>) request.getAttribute("conversation");
     String activeSection = (String) request.getAttribute("activeSection");
+    SimpleDateFormat sdfTime = new SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.FRENCH);
     if (activeSection == null) activeSection = "messages";
     String ctx = request.getContextPath();
     boolean sent = "1".equals(request.getParameter("sent"));
     boolean error = request.getParameter("error") != null;
+    String preType = "";
+    if (preselectedDestinataireId != null) {
+        if (enseignants != null) { for (Enseignant en : enseignants) { if (en.getId().equals(preselectedDestinataireId)) { preType = "enseignant"; break; } } }
+        if ("".equals(preType) && etudiants != null) { for (Etudiant et : etudiants) { if (et.getId().equals(preselectedDestinataireId)) { preType = "etudiant"; break; } } }
+    }
 %>
 <!DOCTYPE html>
 <html lang="fr">
@@ -31,7 +41,7 @@
     <div class="flex items-center gap-4">
         <button onclick="toggleProfilePanel()" class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "AD" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "AD" %>
             </div>
             <span class="text-sm font-medium hidden md:block"><%= userSession != null ? userSession.getNomComplet() : "Admin" %></span>
         </button>
@@ -88,36 +98,74 @@
         <% } %>
 
         <div class="bg-white rounded-xl shadow p-6 max-w-xl">
-            <form method="post" action="<%= ctx %>/admin/MessageServlet">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Destinataire</label>
-                    <select name="type" id="type" required class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm mb-2">
-                        <option value="">-- Type --</option>
-                        <option value="enseignant">Enseignant</option>
-                        <option value="etudiant">Étudiant</option>
-                    </select>
-                    <select name="destinataireId" id="destinataireId" required class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm">
-                        <option value="">-- Choisir --</option>
-                        <% if (enseignants != null) for (Enseignant e : enseignants) { %>
-                        <option value="<%= e.getId() %>" data-type="enseignant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %> – <%= e.getEmail() %></option>
-                        <% } %>
-                        <% if (etudiants != null) for (Etudiant e : etudiants) { %>
-                        <option value="<%= e.getId() %>" data-type="etudiant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %> – <%= e.getEmail() %></option>
-                        <% } %>
-                    </select>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Destinataire</label>
+                <select name="type" id="type" class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm mb-2">
+                    <option value="">-- Type --</option>
+                    <option value="enseignant">Enseignant</option>
+                    <option value="etudiant">Étudiant</option>
+                </select>
+                <select id="destinataireId" class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm">
+                    <option value="">-- Choisir un destinataire pour voir la conversation --</option>
+                    <% if (enseignants != null) for (Enseignant e : enseignants) {
+                        java.util.Date lastDate = (lastMessageDateMap != null) ? lastMessageDateMap.get(e.getId()) : null;
+                        Long unread = (unreadCountMap != null) ? unreadCountMap.get(e.getId()) : null;
+                        int unreadInt = (unread != null && unread > 0) ? unread.intValue() : 0;
+                    %>
+                    <option value="<%= e.getId() %>" data-type="enseignant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %><%= lastDate != null ? " – Dernier: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
+                    <% } %>
+                    <% if (etudiants != null) for (Etudiant e : etudiants) {
+                        java.util.Date lastDate = (lastMessageDateMap != null) ? lastMessageDateMap.get(e.getId()) : null;
+                        Long unread = (unreadCountMap != null) ? unreadCountMap.get(e.getId()) : null;
+                        int unreadInt = (unread != null && unread > 0) ? unread.intValue() : 0;
+                    %>
+                    <option value="<%= e.getId() %>" data-type="etudiant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %><%= lastDate != null ? " – Dernier: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
+                    <% } %>
+                </select>
+            </div>
+            <% if (otherUser != null) { %>
+            <div class="border-t border-gray-200 pt-4 mt-4">
+                <h3 class="text-sm font-semibold text-primary mb-3">Conversation avec <%= otherUser.getNomComplet() %></h3>
+                <% if (conversation != null && !conversation.isEmpty()) { %>
+                <p class="text-xs text-gray-500 mb-2">Dernier message : <%= sdfTime.format(conversation.get(conversation.size()-1).getDateCreation()) %></p>
+                <% } %>
+                <div class="bg-gray-50 rounded-xl p-4 mb-4 max-h-80 overflow-y-auto space-y-2">
+                    <% if (conversation != null && !conversation.isEmpty()) {
+                        for (Notification n : conversation) {
+                            boolean fromMe = n.getExpediteur() != null && userSession != null && n.getExpediteur().getId().equals(userSession.getId());
+                            boolean iAmDest = userSession != null && n.getDestinataire() != null && n.getDestinataire().getId().equals(userSession.getId());
+                    %>
+                    <div class="flex <%= fromMe ? "justify-end" : "justify-start" %>">
+                        <div class="max-w-[85%] rounded-2xl px-4 py-2 <%= fromMe ? "bg-primary text-white" : "bg-white border border-gray-200 text-gray-800" %>">
+                            <p class="text-sm"><%= n.getMessage() != null ? n.getMessage().replace("<", "&lt;").replace(">", "&gt;") : "" %></p>
+                            <p class="text-xs mt-1 opacity-80"><%= n.getDateCreation() != null ? sdfTime.format(n.getDateCreation()) : "" %><% if (iAmDest) { %> · <%= n.isLu() ? "Lu" : "Non lu" %><% } %></p>
+                        </div>
+                    </div>
+                    <% } } else { %>
+                    <p class="text-gray-400 text-sm text-center py-4">Aucun message encore. Envoyez le premier.</p>
+                    <% } %>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                    <textarea name="message" required rows="4" maxlength="1000" placeholder="Votre message..."
-                              class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm"></textarea>
-                </div>
-                <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-900 transition">Envoyer</button>
-            </form>
+                <form method="post" action="<%= ctx %>/admin/MessageServlet">
+                    <% boolean otherIsEnseignant = false; if (enseignants != null) for (Enseignant e : enseignants) { if (e.getId().equals(otherUser.getId())) { otherIsEnseignant = true; break; } } %>
+                    <input type="hidden" name="type" value="<%= otherIsEnseignant ? "enseignant" : "etudiant" %>"/>
+                    <input type="hidden" name="destinataireId" value="<%= otherUser.getId() %>"/>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Répondre</label>
+                        <textarea name="message" required rows="3" maxlength="1000" placeholder="Votre message..."
+                                  class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm"></textarea>
+                    </div>
+                    <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-900 transition">Envoyer</button>
+                </form>
+            </div>
+            <% } %>
         </div>
     </main>
 </div>
 <script>
     function toggleProfilePanel() { document.getElementById('profilePanel').classList.toggle('hidden'); }
+    var ctx = '<%= ctx %>';
+    var preType = '<%= preType %>';
+    var preselectedDestId = '<%= preselectedDestinataireId != null ? preselectedDestinataireId : "" %>';
     document.getElementById('type').addEventListener('change', function() {
         var type = this.value;
         var sel = document.getElementById('destinataireId');
@@ -128,22 +176,21 @@
         }
         if (!type) sel.value = '';
     });
-    <% if (preselectedDestinataireId != null) {
-        String preType = "";
-        if (enseignants != null) { for (Enseignant e : enseignants) { if (e.getId().equals(preselectedDestinataireId)) { preType = "enseignant"; break; } } }
-        if ("".equals(preType) && etudiants != null) { for (Etudiant e : etudiants) { if (e.getId().equals(preselectedDestinataireId)) { preType = "etudiant"; break; } } }
-    %>
-    (function() {
-        var typeSel = document.getElementById('type');
-        var destSel = document.getElementById('destinataireId');
-        typeSel.value = '<%= preType %>';
-        for (var i = 0; i < destSel.options.length; i++) {
-            var opt = destSel.options[i];
-            opt.style.display = (opt.getAttribute('data-type') === '<%= preType %>' || opt.value === '') ? 'block' : 'none';
-        }
-        destSel.value = '<%= preselectedDestinataireId %>';
-    })();
-    <% } %>
+    document.getElementById('destinataireId').addEventListener('change', function() {
+        if (this.value) window.location = ctx + '/admin/MessageServlet?destinataireId=' + this.value;
+    });
+    if (preselectedDestId) {
+        (function() {
+            var typeSel = document.getElementById('type');
+            var destSel = document.getElementById('destinataireId');
+            typeSel.value = preType;
+            for (var i = 0; i < destSel.options.length; i++) {
+                var opt = destSel.options[i];
+                opt.style.display = (opt.getAttribute('data-type') === preType || opt.value === '') ? 'block' : 'none';
+            }
+            destSel.value = preselectedDestId;
+        })();
+    }
 </script>
 </body>
 </html>

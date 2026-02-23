@@ -42,7 +42,7 @@
                 onclick="toggleProfilePanel()"
                 class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "AD" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "AD" %>
             </div>
             <span class="text-sm font-medium hidden md:block">
                 <%= userSession != null ? userSession.getNomComplet() : "Admin" %>
@@ -173,7 +173,7 @@
                     <div class="flex items-center gap-4 mb-4">
                         <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center
                                     font-bold text-purple-700 text-lg flex-shrink-0">
-                            <%= String.valueOf(ens.getPrenom().charAt(0)).toUpperCase() %><%= String.valueOf(ens.getNom().charAt(0)).toUpperCase() %>
+                            <%= (ens.getPrenom() != null && !ens.getPrenom().isEmpty()) ? String.valueOf(ens.getPrenom().charAt(0)).toUpperCase() : "?" %><%= (ens.getNom() != null && !ens.getNom().isEmpty()) ? String.valueOf(ens.getNom().charAt(0)).toUpperCase() : "?" %>
                         </div>
                         <div>
                             <p class="font-bold text-primary"><%= ens.getNomComplet() %></p>

@@ -51,11 +51,11 @@ public class LoginServlet extends HttpServlet {
         session.setAttribute("utilisateur", utilisateur);
         session.setAttribute("role", utilisateur.getRole().name());
 
-        // Redirection selon le rôle
+        // Redirection selon le rôle (Admin : aller directement aux modules)
         String ctx = req.getContextPath();
         switch (utilisateur.getRole()) {
             case ADMIN:
-                resp.sendRedirect(ctx + "/admin/DashboardServlet");
+                resp.sendRedirect(ctx + "/admin/ModuleServlet?action=list");
                 break;
             case ENSEIGNANT:
                 resp.sendRedirect(ctx + "/enseignant/DashboardServlet");

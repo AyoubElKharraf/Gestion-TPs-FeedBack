@@ -57,7 +57,7 @@
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center
                         font-bold text-primary text-lg">
-                <%= module.getEnseignant().getPrenom().charAt(0) %>
+                <%= (module.getEnseignant().getPrenom() != null && !module.getEnseignant().getPrenom().isEmpty()) ? String.valueOf(module.getEnseignant().getPrenom().charAt(0)) : "?" %>
             </div>
             <div>
                 <p class="font-semibold text-gray-800"><%= module.getEnseignant().getNomComplet() %></p>

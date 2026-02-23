@@ -1,5 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.Utilisateur, model.Rapport, model.Module, model.TravailPratique, java.text.SimpleDateFormat" %>
+<%@ page import="model.Utilisateur, model.Rapport, model.Module, model.TravailPratique, java.text.SimpleDateFormat, java.util.Date" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     Rapport rapport = (Rapport) request.getAttribute("rapport");
@@ -11,6 +11,7 @@
     SimpleDateFormat sdfLong = new SimpleDateFormat("dd/MM/yyyy HH:mm", new java.util.Locale("fr"));
     String enseignantNom = (module != null && module.getEnseignant() != null) ? module.getEnseignant().getNomComplet() : "";
     Long enseignantId = (module != null && module.getEnseignant() != null) ? module.getEnseignant().getId() : null;
+    boolean dateLimiteDepassee = (rapport != null && rapport.getDateLimite() != null && rapport.getDateLimite().before(new Date()));
 %>
 <!DOCTYPE html>
 <html lang="fr">
@@ -23,36 +24,54 @@
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
 <header class="bg-primary text-white px-6 py-4 flex items-center justify-between shadow-md">
-    <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list"
+    <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list&section=devoirs"
        class="p-2 rounded-full hover:bg-blue-900 transition">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
     </a>
     <span class="text-xl font-bold">Devoir</span>
-    <div class="w-9 h-9 bg-green-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-        <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "ET" %>
-    </div>
+    <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2 p-1 rounded-full hover:bg-blue-900 transition">
+        <div class="w-9 h-9 bg-green-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
+            <% if (userSession != null && userSession.getPrenom() != null && userSession.getNom() != null) {
+                String p = (userSession.getPrenom() != null && !userSession.getPrenom().isEmpty()) ? String.valueOf(userSession.getPrenom().charAt(0)) : "?";
+                String n = (userSession.getNom() != null && !userSession.getNom().isEmpty()) ? String.valueOf(userSession.getNom().charAt(0)) : "?";
+                out.print(p + n);
+            } else { %>ET<% } %>
+        </div>
+    </button>
 </header>
+
+<div id="profilePanel" class="fixed right-4 top-16 w-72 bg-white shadow-xl rounded-xl z-50 hidden border border-gray-200">
+    <div class="px-4 py-3 border-b flex justify-between items-center">
+        <span class="font-semibold text-gray-800">Profil</span>
+        <button onclick="toggleProfilePanel()" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+    </div>
+    <div class="px-4 py-4 text-sm text-gray-700 space-y-1">
+        <p><span class="font-semibold">Nom :</span> <%= userSession != null && userSession.getNom() != null && userSession.getPrenom() != null ? userSession.getNomComplet() : "-" %></p>
+        <p><span class="font-semibold">Email :</span> <%= userSession != null && userSession.getEmail() != null ? userSession.getEmail() : "-" %></p>
+        <p><span class="font-semibold">Rôle :</span> <%= userSession != null && userSession.getRole() != null ? userSession.getRole().name() : "ETUDIANT" %></p>
+    </div>
+</div>
 
 <div class="flex flex-1">
     <%-- Sidebar (TPs & Feedback on the side for student) --%>
     <aside class="w-64 bg-white shadow-md flex flex-col min-h-full flex-shrink-0">
         <nav class="flex flex-col p-4 gap-2 flex-1">
-            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list#modulesSection"
+            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list&section=modules"
                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Modules
             </a>
-            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list"
+            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list&section=devoirs"
                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium bg-primary text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Mes TPs & Feedback
+                Mes TPs
             </a>
-            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form"
+            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=list&section=feedback"
                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                Déposer / Modifier un TP
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Feedback des TPs
             </a>
             <a href="<%= ctx %>/etudiant/MessageServlet"
                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition">
@@ -136,13 +155,21 @@
             </div>
             <% if (tpPourModule != null) { %>
             <p class="text-sm text-gray-600 mb-3">Vous avez déposé un TP pour ce devoir.</p>
+            <% if (!dateLimiteDepassee) { %>
             <a href="<%= ctx %>/etudiant/DepotTPServlet?action=detail&id=<%= tpPourModule.getId() %>"
                class="block w-full text-center py-2.5 px-4 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition mb-4">
                 Voir mon rendu
             </a>
             <% } else { %>
+            <p class="text-xs text-amber-600 font-medium mb-4">⏰ Date limite dépassée. Le bouton « Voir mon rendu » n'est plus disponible.</p>
+            <% } %>
+            <% } else { %>
+            <% if (dateLimiteDepassee) { %>
+            <p class="text-sm text-gray-600 mb-3">Vous n'avez pas déposé de TP pour ce devoir.</p>
+            <p class="text-xs text-amber-600 font-medium mb-4">⏰ Date limite dépassée. Vous ne pouvez plus déposer de TP pour ce devoir.</p>
+            <% } else { %>
             <p class="text-sm text-gray-600 mb-3">Déposez votre travail pour ce devoir.</p>
-            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form<%= module != null ? "&moduleId=" + module.getId() : "" %>"
+            <a href="<%= ctx %>/etudiant/DepotTPServlet?action=form<%= module != null ? "&moduleId=" + module.getId() : "" %><%= rapport != null ? "&rapportId=" + rapport.getId() : "" %>"
                class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-primary text-white rounded-lg hover:bg-blue-900 transition text-sm font-medium mb-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -150,6 +177,7 @@
                 Déposer un TP
             </a>
             <p class="text-xs text-gray-400">Consultez le document ci-contre puis déposez votre travail.</p>
+            <% } %>
             <% } %>
 
             <div class="pt-4 border-t border-gray-100 mt-4">
@@ -167,5 +195,17 @@
     </div>
     </div>
 </div>
+<script>
+    function toggleProfilePanel() {
+        document.getElementById('profilePanel').classList.toggle('hidden');
+    }
+    document.addEventListener('click', function(e) {
+        const profilePanel = document.getElementById('profilePanel');
+        const profileBtn = document.querySelector('button[onclick="toggleProfilePanel()"]');
+        if (profilePanel && profileBtn && !profilePanel.contains(e.target) && !profileBtn.contains(e.target)) {
+            profilePanel.classList.add('hidden');
+        }
+    });
+</script>
 </body>
 </html>

@@ -3,9 +3,13 @@
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     List<TravailPratique> travaux = (List<TravailPratique>) request.getAttribute("travaux");
+    List<model.Module> modules = (List<model.Module>) request.getAttribute("modules");
     Long nbNotifs = (Long) request.getAttribute("nbNotifs");
     Long nbSoumis = (Long) request.getAttribute("nbSoumis");
     String filtreStatut = (String) request.getAttribute("filtreStatut");
+    String filtreModuleId = (String) request.getAttribute("filtreModuleId");
+    String filtreDateMin = (String) request.getAttribute("filtreDateMin");
+    String filtreDateMax = (String) request.getAttribute("filtreDateMax");
     String activeSection = (String) request.getAttribute("activeSection");
     if (activeSection == null) activeSection = "tps";
     String ctx = request.getContextPath();
@@ -46,7 +50,7 @@
         </button>
         <button type="button" onclick="toggleProfilePanel()" class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null ? String.valueOf(userSession.getPrenom().charAt(0)) + userSession.getNom().charAt(0) : "EN" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "EN" %>
             </div>
             <span class="text-sm font-medium hidden md:block"><%= userSession != null ? userSession.getNomComplet() : "Enseignant" %></span>
         </button>
@@ -148,11 +152,42 @@
     </aside>
 
     <main class="flex-1 p-6 max-w-5xl mx-auto w-full">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-4">
         <div>
             <h2 class="text-2xl font-bold text-primary">TPs à corriger</h2>
         </div>
     </div>
+    <form method="get" action="<%= ctx %>/enseignant/CorrectionTPServlet" class="flex flex-wrap gap-3 items-end mb-6 p-3 bg-gray-50 rounded-lg">
+        <input type="hidden" name="action" value="list"/>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Module</label>
+            <select name="moduleId" class="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                <option value="">Tous</option>
+                <% if (modules != null) for (model.Module m : modules) { %>
+                <option value="<%= m.getId() %>"<%= (filtreModuleId != null && filtreModuleId.equals(String.valueOf(m.getId()))) ? " selected" : "" %>><%= m.getNom() %></option>
+                <% } %>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Statut</label>
+            <select name="statut" class="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                <option value="">Tous</option>
+                <option value="SOUMIS"<%= "SOUMIS".equals(filtreStatut) ? " selected" : "" %>>Soumis</option>
+                <option value="EN_CORRECTION"<%= "EN_CORRECTION".equals(filtreStatut) ? " selected" : "" %>>En correction</option>
+                <option value="CORRIGE"<%= "CORRIGE".equals(filtreStatut) ? " selected" : "" %>>Corrigé</option>
+                <option value="RENDU"<%= "RENDU".equals(filtreStatut) ? " selected" : "" %>>Rendu</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Date dépôt (début)</label>
+            <input type="date" name="dateMin" value="<%= filtreDateMin != null ? filtreDateMin : "" %>" class="border border-gray-300 rounded px-2 py-1.5 text-sm"/>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Date dépôt (fin)</label>
+            <input type="date" name="dateMax" value="<%= filtreDateMax != null ? filtreDateMax : "" %>" class="border border-gray-300 rounded px-2 py-1.5 text-sm"/>
+        </div>
+        <button type="submit" class="px-3 py-1.5 bg-primary text-white text-sm rounded hover:bg-blue-900 transition">Filtrer</button>
+    </form>
 
     <%-- Liste (statut affiché dans le tableau pour chaque TP) --%>
     <% if (travaux == null || travaux.isEmpty()) { %>
@@ -197,7 +232,7 @@
                         <% if (tp.getEtudiant() != null) { %>
                         <div class="flex items-center gap-2">
                             <div class="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700">
-                                <%= String.valueOf(tp.getEtudiant().getPrenom().charAt(0)).toUpperCase() %>
+                                <%= (tp.getEtudiant().getPrenom() != null && !tp.getEtudiant().getPrenom().isEmpty()) ? String.valueOf(tp.getEtudiant().getPrenom().charAt(0)).toUpperCase() : "?" %>
                             </div>
                             <%= tp.getEtudiant().getNomComplet() %>
                         </div>
@@ -252,7 +287,8 @@
                 list.innerHTML = data.map(n => {
                     var content = '<p class="text-sm text-gray-700">' + (n.message||'') + '</p><p class="text-xs text-gray-400 mt-0.5">' + (n.date||'') + '</p>' + (n.replyUrl ? '<p class="text-xs text-primary font-medium mt-1">Cliquez pour répondre →</p>' : '');
                     var cls = 'px-4 py-3 hover:bg-gray-50 ' + (n.lu ? '' : 'bg-blue-50');
-                    return n.replyUrl ? '<a href="' + n.replyUrl + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
+                    var url = n.replyUrl || n.markReadUrl;
+                    return url ? '<a href="' + url + '" class="block ' + cls + '">' + content + '</a>' : '<div class="' + cls + '">' + content + '</div>';
                 }).join('');
                 const badge = document.getElementById('notifBadge');
                 const nonLues = data.filter(n => !n.lu).length;
