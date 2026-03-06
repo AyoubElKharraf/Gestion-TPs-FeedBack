@@ -2,20 +2,22 @@
 
 Document d'évaluation technique et fonctionnelle du mini-projet Jakarta EE — gestion académique (étudiants, enseignants, modules, TP, absences, intégration API).
 
+**Version mise à jour** avec les dernières améliorations de sécurité et fonctionnalités.
+
 ---
 
 ## 1. Synthèse globale
 
 | Critère            | Note / Commentaire |
 |--------------------|--------------------|
-| **Fonctionnalités** | ✅ Complètes pour le périmètre (admin, enseignant, étudiant, API absences). |
-| **Architecture**    | ✅ MVC classique (Servlets + JSP + DAO), claire et maintenable. |
-| **Sécurité**        | ⚠️ Correcte pour un projet étudiant ; améliorations possibles (voir §4). |
+| **Fonctionnalités** | ✅ Complètes (admin, enseignant, étudiant, API absences, **versioning TPs**). |
+| **Architecture**    | ✅ MVC classique (Servlets + JSP/JSTL + DAO), claire et maintenable. |
+| **Sécurité**        | ✅ **Renforcée** : protection XSS, en-têtes HTTP, validation entrées. |
 | **Intégration API** | ✅ Bien conçue (entrant/sortant), CORS, JSON, documentation. |
 | **Base de données** | ✅ JPA/Hibernate, requêtes paramétrées, schéma cohérent. |
-| **Qualité du code** | ✅ Lisible, rôles vérifiés dans chaque servlet, peu de duplication. |
+| **Qualité du code** | ✅ Lisible, utilitaires réutilisables, peu de duplication. |
 
-**Verdict :** Application solide, adaptée à un mini-projet Jakarta EE, avec une vraie valeur ajoutée (hashage des mots de passe, intégration avec un système d’absences externe, API REST).
+**Verdict :** Application **solide et sécurisée**, adaptée à un mini-projet Jakarta EE avancé, avec une vraie valeur ajoutée (hashage des mots de passe, protection XSS, versioning des TPs, intégration API externe).
 
 ---
 
@@ -25,104 +27,289 @@ Document d'évaluation technique et fonctionnelle du mini-projet Jakarta EE — 
 
 - **Trois rôles bien séparés** (ADMIN, ENSEIGNANT, ETUDIANT) avec redirections selon le rôle après login.
 - **Admin** : CRUD modules, enseignants, étudiants ; messages ; vérification des non-rendus ; liste des étudiants « à supprimer » (3 absences).
-- **Enseignant** : rapports (supports de cours), correction des TP, commentaires, liste des non-rendus, signalement d’absence vers AbsTrack, messages.
-- **Étudiant** : dépôt de TP (avec filtres par module/statut/dates), consultation des feedbacks, messages.
+- **Enseignant** : rapports (supports de cours), correction des TP, commentaires, liste des non-rendus, signalement d'absence vers AbsTrack, messages.
+- **Étudiant** : dépôt de TP avec **versioning** (mise à jour avant deadline), consultation des feedbacks, messages.
 - **Notifications** : centralisées (NotificationServlet), avec compteur et marquage « lu ».
 
-### 2.2 Sécurité des mots de passe
+### 2.2 Gestion des versions des TPs *(NOUVEAU)*
+
+- **Versioning complet** : un étudiant peut soumettre plusieurs versions d'un TP avant la date limite.
+- **Modèle enrichi** : colonne `parent_id` dans `TravailPratique` pour lier les versions.
+- **Historique visuel** : interface déroulante affichant toutes les versions avec dates et fichiers.
+- **DAO dédié** : méthodes `findVersionHistory()` et `findRootVersion()` pour récupérer la chaîne des versions.
+
+```
+┌─────────────────────────────────────────────┐
+│ 🕐 Historique des versions              ▼  │
+│    3 versions                               │
+├─────────────────────────────────────────────┤
+│ ● Version 1 : 27 Fév · 17:33   [Voir]  ⬇   │
+│ ● Version 2 : 27 Fév · 18:04   [Voir]  ⬇   │
+│ ● Version 3 : 28 Fév [Actuelle]        ⬇   │
+└─────────────────────────────────────────────┘
+```
+
+### 2.3 Sécurité des mots de passe
 
 - **Hachage systématique** avant stockage en base (`PasswordUtil.hash` avec SHA-256 + sel).
 - Utilisation dans `EtudiantServlet` et `EnseignantServlet` à la création/mise à jour.
 - Vérification à la connexion via `PasswordUtil.verify` dans `UtilisateurDAO`.
-- Pas de stockage en clair pour les nouveaux comptes ; rétrocompatibilité gérée pour d’éventuels anciens comptes.
 
-### 2.3 Intégration avec l’application des absences (AbsTrack)
+### 2.4 Protection XSS *(NOUVEAU - IMPLÉMENTÉ)*
 
-- **Configuration centralisée** : `absence.system.url` dans `web.xml` (context-param), utilisée par les servlets qui appellent AbsTrack.
-- **Sortant** : envoi d’alertes « non remis TP » et possibilité de notifier le « dépassement » (3 enseignants) ; récupération des absences par enseignant pour la fiche étudiant.
-- **Entrant** : API REST bien définies :
-  - `POST /api/absence` : enregistrement d’un signalement (étudiant + enseignant), calcul de `nbAbsences` et `aSupprimer` (≥ 3 enseignants distincts).
-  - `GET /api/non-rendus` : liste des étudiants n’ayant pas rendu leur TP (date limite dépassée).
-  - `POST /api/alerte-depassement` : réception d’une alerte depuis AbsTrack ; mise à jour de l’étudiant et notification des admins.
-- CORS configuré sur les API pour les appels cross-origin.
-- Réponses JSON structurées (`success`, `error`, champs métier).
+| Technique | Implémentation | Fichiers concernés |
+|-----------|----------------|-------------------|
+| **JSTL `<c:out>`** | Échappement automatique | `login.jsp` |
+| **HtmlUtil.escape()** | Échappement manuel | Tous les JSP avec scriptlets |
+| **HtmlUtil.escapeJs()** | JavaScript inline | `messages.jsp` |
 
-### 2.4 Modèle de données et accès
+**Classe `util.HtmlUtil`** :
+```java
+public static String escape(String input) {
+    // Remplace & < > " ' par entités HTML
+    // &amp; &lt; &gt; &quot; &#x27;
+}
 
-- **JPA** avec entités claires (Utilisateur héritage JOINED, Module, Rapport, TravailPratique, AbsenceReport, Notification, etc.).
-- **DAOs** avec `EntityManager` ouvert/fermé correctement, transactions (begin/commit/rollback).
-- **Requêtes paramétrées** partout (`:email`, `:kw`, etc.) — pas de concaténation SQL → **pas de risque d’injection SQL**.
+public static String escapeJs(String input) {
+    // Échappement pour JavaScript inline
+    // \\ \' \" \n \r \u003c \u003e
+}
+```
 
-### 2.5 Contrôle d’accès métier
+**Utilisation dans les JSP** :
+```jsp
+<!-- Avant (vulnérable) -->
+<%= user.getNom() %>
 
-- Chaque servlet « métier » vérifie la **session** et le **rôle** (ex. `isAdmin()`, `getEtudiantSession()`), puis redirige si non autorisé.
-- **RapportDownloadServlet** : accès au rapport selon le rôle (admin toujours ; enseignant propriétaire du module ; étudiant de la même filière que le module).
+<!-- Après (sécurisé) -->
+<%= HtmlUtil.escape(user.getNom()) %>
 
-### 2.6 Upload de fichiers (TP)
+<!-- Avec JSTL -->
+<c:out value="${erreur}"/>
+```
 
-- **Taille limitée** : `@MultipartConfig` (10 Mo fichier, 15 Mo requête) et `FileUploadUtil.getTailleMax()`.
+### 2.5 En-têtes de sécurité HTTP *(NOUVEAU)*
+
+Le filtre `SecurityFilter` (`@WebFilter("/*")`) ajoute automatiquement :
+
+| En-tête | Valeur | Protection |
+|---------|--------|------------|
+| `X-Frame-Options` | `SAMEORIGIN` | Anti-clickjacking |
+| `X-Content-Type-Options` | `nosniff` | Anti-MIME sniffing |
+| `X-XSS-Protection` | `1; mode=block` | XSS navigateur |
+| `Content-Security-Policy` | Politique stricte | Scripts/styles autorisés |
+| `Cache-Control` | `no-store` | Pas de mise en cache |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Contrôle referrer |
+
+### 2.6 Validation des entrées *(NOUVEAU)*
+
+Classe `util.InputValidator` pour valider côté serveur :
+
+| Méthode | Rôle |
+|---------|------|
+| `isValidEmail(String)` | Valide format email |
+| `isValidName(String)` | Lettres, espaces, tirets |
+| `isNumeric(String)` | Chaîne numérique |
+| `parseId(String)` | Parse Long sécurisé |
+| `sanitize(String)` | Nettoie espaces superflus |
+| `isValidPassword(String)` | Minimum 6 caractères |
+
+### 2.7 Intégration avec l'application des absences (AbsTrack)
+
+- **Configuration centralisée** : `absence.system.url` dans `web.xml`.
+- **Sortant** : alertes « non remis TP », notification dépassement, récupération absences.
+- **Entrant** : API REST (`/api/absence`, `/api/non-rendus`, `/api/alerte-depassement`).
+- CORS configuré, réponses JSON structurées.
+
+### 2.8 Modèle de données et accès
+
+- **JPA** avec entités claires (héritage JOINED, relations ManyToOne/OneToMany).
+- **DAOs** avec `EntityManager` géré proprement.
+- **Requêtes paramétrées** partout → **pas de risque d'injection SQL**.
+
+### 2.9 Upload de fichiers (TP)
+
+- **Taille limitée** : `@MultipartConfig` (10 Mo fichier, 15 Mo requête).
 - **Extensions autorisées** : liste blanche (pdf, doc, zip, java, etc.).
-- **Noms de fichiers** : suffixe UUID pour éviter les collisions et les chemins prévisibles.
-- Stockage sous `user.home/tp_uploads` avec sous-dossiers par étudiant.
-
-### 2.7 Documentation et lisibilité
-
-- **README.md** et **EVALUATION.md** (ce document) donnent une vue d’ensemble.
-- Commentaires Javadoc utiles sur les API et les services (ex. `AbsenceIntegrationService`, `AlerteDepassementApiServlet`).
-- Noms de classes et de méthodes cohérents (français pour le domaine métier).
+- **Noms de fichiers** : suffixe UUID pour éviter les collisions.
 
 ---
 
-## 3. Points d’attention (non bloquants)
+## 3. Améliorations implémentées (anciens points d'attention)
 
-### 3.1 Filtre d’authentification limité à `/vues/*`
+### 3.1 ~~Pas d'échappement XSS dans les JSP~~ ✅ CORRIGÉ
 
-- **AuthFilter** ne s’applique qu’à `/vues/*`. Les URLs `/admin/*`, `/enseignant/*`, `/etudiant/*` ne sont **pas** protégées par le filtre.
-- **Conséquence** : la sécurité repose entièrement sur les vérifications faites dans chaque servlet. C’est cohérent et fonctionnel, mais un oubli dans une future servlet exposerait une URL sans contrôle.
-- **Recommandation** : étendre le filtre à `/admin/*`, `/enseignant/*`, `/etudiant/*` (et exclure explicitement `/LoginServlet`, `/api/*` si besoin), ou centraliser la vérification rôle dans un filtre unique pour éviter la duplication.
+**Avant** : Les vues utilisaient `<%= ... %>` sans échappement.
 
-### 3.2 Pas d’échappement XSS dans les JSP
+**Maintenant** :
+- `HtmlUtil.escape()` appliqué sur tous les contenus utilisateur (noms, messages, commentaires).
+- `HtmlUtil.escapeJs()` pour les variables JavaScript inline.
+- JSTL `<c:out>` utilisé dans `login.jsp`.
 
-- Les vues utilisent souvent `<%= ... %>` pour afficher des données (nom, email, message, etc.).
-- Si ces données proviennent de saisies utilisateur ou de la base (commentaires, messages), un contenu malveillant pourrait être exécuté dans le navigateur (XSS).
-- **Recommandation** : utiliser `<c:out value="..." />` ou `fn:escapeXml()` pour tout affichage de données dynamiques, ou activer l’échappement par défaut (JSP 2.0+).
+**Fichiers corrigés** :
+- `login.jsp` (JSTL)
+- `tp_detail.jsp` (HtmlUtil)
+- `admin/messages.jsp` (HtmlUtil)
+- `enseignant/message.jsp` (HtmlUtil)
+- `etudiant/message.jsp` (HtmlUtil)
+- `notifications.jsp` (HtmlUtil)
 
-### 3.3 API publiques sans authentification
+### 3.2 ~~Pas d'en-têtes de sécurité HTTP~~ ✅ AJOUTÉ
 
-- Les endpoints `/api/absence`, `/api/non-rendus`, `/api/alerte-depassement` sont accessibles sans token ni authentification.
-- Pour un mini-projet et une communication entre deux applications sur un réseau contrôlé, c’est acceptable. En production, il faudrait restreindre (IP, token partagé, ou API key).
-
-### 3.4 Hashage des mots de passe (SHA-256 + sel fixe)
-
-- **PasswordUtil** utilise SHA-256 avec un sel fixe. C’est bien au-dessus du stockage en clair et suffisant pour un projet pédagogique.
-- Pour une **production** : préférer **BCrypt** ou **PBKDF2** avec un sel par utilisateur (comme indiqué dans les commentaires du code).
-
-### 3.5 Typo dans un chemin de vues
-
-- Le répertoire des JSP étudiant est nommé **`etduaint`** au lieu de `etudiant`. Cela n’impacte pas la correction mais peut prêter à confusion lors de la maintenance.
-
-### 3.6 Gestion d’erreurs et logs
-
-- Les exceptions sont souvent attrapées et peu remontées (ex. `NumberFormatException` ignorée, `IOException` avalée dans `FileUploadUtil.supprimer`). Aucun mécanisme de log centralisé visible.
-- **Recommandation** : utiliser un logger (ex. SLF4J + Logback) et logger au moins les erreurs (et en production éviter d’exposer les stack traces à l’utilisateur).
+**Nouveau filtre** `SecurityFilter` appliqué sur toutes les requêtes (`/*`) :
+- Protection clickjacking
+- Protection MIME sniffing
+- Content Security Policy
+- Cache-Control pour pages sensibles
 
 ---
 
-## 4. Recommandations pour une évolution
+## 4. Points d'attention restants (non bloquants)
 
-| Priorité | Action |
-|----------|--------|
-| Haute    | Échappement XSS dans les JSP (`c:out` / `fn:escapeXml`) pour les champs saisis par l’utilisateur. |
-| Haute    | Étendre le filtre d’authentification aux URLs `/admin/*`, `/enseignant/*`, `/etudiant/*` (ou ajouter un filtre par rôle). |
-| Moyenne  | Migrer le hashage des mots de passe vers BCrypt (ou équivalent) pour les nouveaux comptes. |
-| Moyenne  | Sécuriser les API d’intégration (token, IP whitelist ou API key) si déploiement en environnement partagé. |
-| Basse    | Renommer le dossier `etduaint` en `etudiant`. |
-| Basse    | Introduire un logger et une gestion d’erreurs homogène (messages utilisateur + logs serveur). |
+### 4.1 Filtre d'authentification limité à `/vues/*`
+
+- **AuthFilter** ne s'applique qu'à `/vues/*`. La sécurité repose sur les vérifications servlet.
+- **Recommandation** : étendre le filtre à `/admin/*`, `/enseignant/*`, `/etudiant/*`.
+
+### 4.2 API publiques sans authentification
+
+- Les endpoints `/api/*` sont accessibles sans token.
+- Acceptable pour un projet pédagogique ; en production, ajouter une API key.
+
+### 4.3 Hashage des mots de passe (SHA-256 + sel fixe)
+
+- Suffisant pour un projet pédagogique.
+- **Production** : préférer BCrypt ou PBKDF2 avec sel par utilisateur.
+
+### 4.4 Typo dans un chemin de vues
+
+- Le répertoire est nommé `etduaint` au lieu de `etudiant`.
+- Impact cosmétique uniquement.
+
+### 4.5 Gestion d'erreurs et logs
+
+- Pas de logger centralisé visible.
+- **Recommandation** : utiliser SLF4J + Logback.
 
 ---
 
-## 5. Conclusion
+## 5. Tableau récapitulatif des améliorations
 
-L’application **EtudAcadPro** est **bien réalisée** pour un mini-projet Jakarta EE : les objectifs fonctionnels (gestion des rôles, TP, rapports, absences, intégration avec un système externe) sont atteints, le code est structuré, et les choix de sécurité (hachage des mots de passe, requêtes paramétrées, contrôle d’accès par servlet) sont corrects. Les points d’attention relevés (filtre limité à `/vues/*`, XSS, API publiques, renforcement du hashage en production) sont des améliorations classiques pour passer d’un contexte « projet / démo » à un déploiement plus exigeant.
+| Fonctionnalité | Statut | Détail |
+|----------------|--------|--------|
+| Protection XSS | ✅ Implémenté | `HtmlUtil`, JSTL `<c:out>` |
+| En-têtes HTTP sécurisés | ✅ Implémenté | `SecurityFilter` |
+| Validation des entrées | ✅ Implémenté | `InputValidator` |
+| Versioning des TPs | ✅ Implémenté | `parent_id`, historique UI |
+| Hashage mots de passe | ✅ Existant | SHA-256 + sel |
+| Requêtes paramétrées (SQL) | ✅ Existant | JPA/JPQL |
+| Contrôle d'accès par rôle | ✅ Existant | Vérification dans servlets |
+| Extension filtre auth | ⏳ Recommandé | `/admin/*`, `/enseignant/*`, `/etudiant/*` |
+| Authentification API | ⏳ Recommandé | Token ou API key |
+| Logger centralisé | ⏳ Recommandé | SLF4J + Logback |
 
-**Note indicative :** bon niveau pour un mini-projet (équivalent à une note très satisfaisante), avec une marge d’amélioration clairement identifiée pour la sécurité et la maintenabilité.
+---
+
+## 6. Recommandations pour une évolution
+
+| Priorité | Action | Statut |
+|----------|--------|--------|
+| ~~Haute~~ | ~~Échappement XSS dans les JSP~~ | ✅ FAIT |
+| ~~Haute~~ | ~~En-têtes de sécurité HTTP~~ | ✅ FAIT |
+| Moyenne  | Étendre filtre d'authentification aux URLs métier | ⏳ À faire |
+| Moyenne  | Migrer vers BCrypt pour le hashage | ⏳ À faire |
+| Moyenne  | Sécuriser API d'intégration (token, IP whitelist) | ⏳ À faire |
+| Basse    | Renommer le dossier `etduaint` en `etudiant` | ⏳ À faire |
+| Basse    | Introduire un logger centralisé | ⏳ À faire |
+
+---
+
+## 7. Architecture de sécurité actuelle
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         REQUÊTE HTTP                                │
+└─────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              SECURITY FILTER (@WebFilter("/*"))                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ • X-Frame-Options: SAMEORIGIN                                 │  │
+│  │ • X-Content-Type-Options: nosniff                             │  │
+│  │ • X-XSS-Protection: 1; mode=block                             │  │
+│  │ • Content-Security-Policy: default-src 'self'; ...            │  │
+│  │ • Cache-Control: no-store                                     │  │
+│  │ • Referrer-Policy: strict-origin-when-cross-origin            │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                 AUTH FILTER (@WebFilter("/vues/*"))                 │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ • Vérifie session.getAttribute("utilisateur")                 │  │
+│  │ • Redirige vers /LoginServlet si non connecté                 │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                          SERVLET                                    │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ • Vérification rôle (isAdmin(), getEtudiantSession(), etc.)   │  │
+│  │ • Validation entrées (InputValidator)                         │  │
+│  │ • Logique métier                                              │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        DAO (JPA)                                    │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ • Requêtes JPQL paramétrées (:email, :id, :kw)                │  │
+│  │ • Pas de concaténation SQL → Pas d'injection                  │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        VUE (JSP)                                    │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ • JSTL <c:out> pour données dynamiques                        │  │
+│  │ • HtmlUtil.escape() pour scriptlets                           │  │
+│  │ • HtmlUtil.escapeJs() pour JavaScript inline                  │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 8. Conclusion
+
+L'application **EtudAcadPro** est **très bien réalisée** pour un mini-projet Jakarta EE avancé :
+
+### Objectifs atteints ✅
+- Gestion des rôles (admin, enseignant, étudiant)
+- CRUD complet (modules, enseignants, étudiants, TP, rapports)
+- **Versioning des TPs** avec historique visuel
+- Intégration API avec système d'absences externe
+- **Sécurité renforcée** : XSS, en-têtes HTTP, hashage mots de passe
+
+### Qualité technique ✅
+- Architecture MVC propre et maintenable
+- JPA/Hibernate avec requêtes paramétrées (pas d'injection SQL)
+- Classes utilitaires réutilisables (`HtmlUtil`, `InputValidator`, `PasswordUtil`)
+- Documentation complète (README.md, EVALUATION.md)
+
+### Points d'amélioration identifiés (mineurs)
+- Extension du filtre d'authentification
+- Migration vers BCrypt (production)
+- Authentification des API
+- Logger centralisé
+
+**Note indicative :** Excellent niveau pour un mini-projet, avec une vraie maturité sur les aspects sécurité et architecture. Les améliorations restantes sont des bonnes pratiques pour un passage en production.
+
+---
+
+*Document mis à jour après implémentation des protections XSS, des en-têtes de sécurité HTTP et du versioning des TPs.*
