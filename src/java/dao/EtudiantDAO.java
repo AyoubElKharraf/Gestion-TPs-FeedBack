@@ -2,6 +2,7 @@ package dao;
 
 import model.Etudiant;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
 
@@ -9,6 +10,24 @@ import java.util.List;
  * DAO pour les opérations CRUD sur les Étudiants
  */
 public class EtudiantDAO {
+
+    /** Trouve un étudiant par email (pour API alerte-depassement depuis Gestion_AbsencesAlerts). */
+    public Etudiant findByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) return null;
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Etudiant> q = em.createQuery(
+                "SELECT e FROM Etudiant e WHERE LOWER(e.email) = LOWER(:email)",
+                Etudiant.class
+            );
+            q.setParameter("email", email.trim());
+            return q.getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        } finally {
+            em.close();
+        }
+    }
 
     public List<Etudiant> findAll() {
         EntityManager em = JPAUtil.getEntityManager();
@@ -100,6 +119,31 @@ public class EtudiantDAO {
             em.getTransaction().begin();
             em.merge(e);
             em.getTransaction().commit();
+        } catch (Exception ex) {
+            em.getTransaction().rollback();
+            throw ex;
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * Met à jour nbAbsences et aSupprimer pour un étudiant (appelé par l'API alerte-depassement).
+     * Utilise un UPDATE JPQL pour garantir la persistance en base et l'affichage dans la liste admin.
+     */
+    public int updateAbsencesAndFlag(Long etudiantId, int nbAbsences, boolean aSupprimer) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            em.getTransaction().begin();
+            int updated = em.createQuery(
+                "UPDATE Etudiant e SET e.nbAbsences = :nb, e.aSupprimer = :as WHERE e.id = :id"
+            )
+                .setParameter("nb", nbAbsences)
+                .setParameter("as", aSupprimer)
+                .setParameter("id", etudiantId)
+                .executeUpdate();
+            em.getTransaction().commit();
+            return updated;
         } catch (Exception ex) {
             em.getTransaction().rollback();
             throw ex;

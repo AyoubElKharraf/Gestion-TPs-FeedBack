@@ -10,6 +10,7 @@ import model.Etudiant;
 import model.Notification;
 import model.Utilisateur;
 import util.AbsenceIntegrationService;
+import java.util.List;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -110,7 +111,11 @@ public class EtudiantServlet extends HttpServlet {
                     resp.sendRedirect(ctx + "/admin/EtudiantServlet?action=list&notfound=1");
                     return;
                 }
+                String baseUrlAbsences = getServletContext().getInitParameter("absence.system.url");
+                List<AbsenceIntegrationService.AbsenceParEnseignant> absencesParEnseignant =
+                    AbsenceIntegrationService.getAbsencesParEnseignant(e.getEmail(), baseUrlAbsences);
                 req.setAttribute("etudiant", e);
+                req.setAttribute("absencesParEnseignant", absencesParEnseignant);
                 req.setAttribute("activeSection", "etudiants");
                 req.getRequestDispatcher("/WEB-INF/vues/admin/etudiant_detail.jsp").forward(req, resp);
                 break;

@@ -2,6 +2,7 @@ package dao;
 
 import model.Enseignant;
 import model.Utilisateur;
+import model.Utilisateur.Role;
 import util.PasswordUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -49,6 +50,19 @@ public class UtilisateurDAO {
         EntityManager em = JPAUtil.getEntityManager();
         try {
             return em.find(Utilisateur.class, id);
+        } finally {
+            em.close();
+        }
+    }
+
+    /** Tous les utilisateurs avec le rôle ADMIN (pour notifications alerte dépassement). */
+    public List<Utilisateur> findByRole(Role role) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            return em.createQuery(
+                "SELECT u FROM Utilisateur u WHERE u.role = :role",
+                Utilisateur.class
+            ).setParameter("role", role).getResultList();
         } finally {
             em.close();
         }

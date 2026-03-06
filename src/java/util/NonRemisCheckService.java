@@ -53,11 +53,15 @@ public final class NonRemisCheckService {
                     }
                 }
                 if (!aRendu) {
+                    String emailEnseignant = rapport.getModule().getEnseignant() != null
+                        ? rapport.getModule().getEnseignant().getEmail() : null;
                     AbsenceIntegrationService.notifyNonRemisTp(
                         etu.getId(),
                         rapport.getModule().getId(),
                         rapport.getModule().getNom(),
-                        rapport.getTitre()
+                        rapport.getTitre(),
+                        etu.getEmail(),
+                        emailEnseignant
                     );
                     dejaNotifies.add(key);
                 }

@@ -7,6 +7,14 @@
 
     <display-name>MiniProjet-BE4</display-name>
 
+    <!-- URL du système externe Gestion_AbsencesAlerts / AbsTrack (pour signalement des absences et API absences-par-enseignant).
+         - Même machine : http://localhost:8080/GestionAA (AbsTrack sur 8080).
+         - Deux machines (EtudAcadPro sur PC1:8081, AbsTrack sur PC2:8080) : remplacer par l'IP du PC où tourne AbsTrack, ex. http://192.168.1.10:8080/GestionAA -->
+    <context-param>
+        <param-name>absence.system.url</param-name>
+        <param-value>http://localhost:8081/AbsTrack</param-value>
+    </context-param>
+
     <!-- Filtre d'authentification -->
     <filter>
         <filter-name>AuthFilter</filter-name>

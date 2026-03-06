@@ -129,9 +129,59 @@
         <div class="bg-white rounded-xl shadow p-8">
             <h1 class="text-2xl font-bold text-primary mb-2">Gestion des Absences</h1>
             <p class="text-gray-500 text-sm mb-4">
-                Les absences sont gérées par l'application dédiée et synchronisées avec l'administrateur.
-                Lorsqu'un étudiant est supprimé pour dépassement d'absences, vous recevez une notification.
+                Les absences sont gérées par le système externe <strong>AbsTrack</strong>.
+                Signalez ci-dessous les étudiants qui n'ont pas rendu leur TP avant la date limite : l'absence sera enregistrée dans le système externe.
+                Lorsqu'un étudiant dépasse la limite (3 enseignants distincts), vous recevez une notification.
             </p>
+            <% if (Boolean.TRUE.equals(request.getAttribute("signale"))) { %>
+            <div class="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-sm">
+                <strong>Absence signalée au système AbsTrack.</strong><br/>
+                Pour voir les absences dans le tableau de bord de AbsTrack, connectez-vous avec le <strong>même email</strong>.
+            </div>
+            <% } %>
+            <% if (Boolean.FALSE.equals(request.getAttribute("signale"))) { %>
+            <div class="mb-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm">
+                <strong>Le système Gestion_AbsencesAlerts n'a pas enregistré l'absence.</strong> Vérifiez que : (1) l'URL est configurée dans <code>web.xml</code> (context-param <code>absence.system.url</code>) et pointe vers l'application Gestion_AbsencesAlerts ; (2) cette application est démarrée ; (3) l'étudiant et l'enseignant existent dans Gestion_AbsencesAlerts avec les <strong>mêmes adresses email</strong> que dans EtudAcadPro.
+            </div>
+            <% } %>
+            <% if ("param".equals(request.getAttribute("erreur")) || "module".equals(request.getAttribute("erreur")) || "etudiant".equals(request.getAttribute("erreur"))) { %>
+            <div class="mb-4 p-3 bg-red-100 text-red-800 rounded-lg text-sm">Erreur lors du signalement. Vérifiez les paramètres.</div>
+            <% } %>
+
+            <% java.util.List<model.NonRemisItem> nonRemisList = (java.util.List<model.NonRemisItem>) request.getAttribute("nonRemisList"); %>
+            <% if (nonRemisList != null && !nonRemisList.isEmpty()) { %>
+            <h2 class="text-lg font-semibold text-gray-800 mt-6 mb-3">Étudiants n'ayant pas rendu le TP (date limite dépassée)</h2>
+            <p class="text-gray-500 text-sm mb-3">Cliquez sur « Signaler absence » pour enregistrer l'absence dans le système Gestion_AbsencesAlerts.</p>
+            <div class="overflow-x-auto">
+                <table class="min-w-full border border-gray-200 rounded-lg">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Module</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Rapport / TP</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Étudiant</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% for (model.NonRemisItem item : nonRemisList) { %>
+                        <tr class="border-t border-gray-200 hover:bg-gray-50">
+                            <td class="px-4 py-2 text-sm"><%= item.getModule() != null ? item.getModule().getNom() : "-" %></td>
+                            <td class="px-4 py-2 text-sm"><%= item.getRapport() != null ? item.getRapport().getTitre() : "-" %></td>
+                            <td class="px-4 py-2 text-sm"><%= item.getEtudiant() != null ? item.getEtudiant().getNomComplet() + " (" + item.getEtudiant().getEmail() + ")" : "-" %></td>
+                            <td class="px-4 py-2">
+                                <% if (item.getEtudiant() != null && item.getModule() != null) { %>
+                                <a href="<%= ctx %>/enseignant/SignalerAbsenceTpServlet?etudiantId=<%= item.getEtudiant().getId() %>&moduleId=<%= item.getModule().getId() %>"
+                                   class="inline-block px-3 py-1.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-900 transition">Signaler absence</a>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+            <% } else { %>
+            <p class="text-gray-500 text-sm mt-4">Aucun étudiant en retard de rendu de TP pour vos modules (date limite dépassée).</p>
+            <% } %>
         </div>
     </main>
 </div>

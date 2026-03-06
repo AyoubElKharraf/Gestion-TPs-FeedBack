@@ -1,8 +1,11 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.Etudiant, model.Utilisateur" %>
+<%@ page import="model.Etudiant, model.Utilisateur, java.util.List, util.AbsenceIntegrationService" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     Etudiant etudiant = (Etudiant) request.getAttribute("etudiant");
+    @SuppressWarnings("unchecked")
+    List<AbsenceIntegrationService.AbsenceParEnseignant> absencesParEnseignant = (List<AbsenceIntegrationService.AbsenceParEnseignant>) request.getAttribute("absencesParEnseignant");
+    if (absencesParEnseignant == null) absencesParEnseignant = java.util.Collections.emptyList();
     String ctx = request.getContextPath();
     boolean updated = "1".equals(request.getParameter("updated"));
 %>
@@ -95,6 +98,29 @@
                 <p class="text-gray-800 mt-1">Étudiant</p>
             </div>
         </div>
+
+        <%-- Absences par enseignant (données Gestion_AbsencesAlerts) --%>
+        <% if (absencesParEnseignant != null && !absencesParEnseignant.isEmpty()) { %>
+        <div class="mt-6 pt-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400 uppercase font-semibold mb-3">Absences par enseignant</p>
+            <p class="text-sm text-gray-500 mb-3">Nombre d'absences enregistrées par chaque enseignant (source : Gestion Absences).</p>
+            <ul class="space-y-2">
+                <% for (AbsenceIntegrationService.AbsenceParEnseignant a : absencesParEnseignant) { %>
+                <li class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 border border-gray-100">
+                    <span class="text-gray-800 font-medium"><%= a.getEnseignantNom() %></span>
+                    <span class="inline-flex items-center justify-center min-w-[3rem] px-2 py-1 rounded text-sm font-semibold <%= a.getNbAbsences() >= 3 ? "bg-red-100 text-red-700" : "bg-amber-50 text-amber-700" %>">
+                        <%= a.getNbAbsences() %> absence<%= a.getNbAbsences() > 1 ? "s" : "" %>
+                    </span>
+                </li>
+                <% } %>
+            </ul>
+        </div>
+        <% } else if (etudiant.getNbAbsences() > 0) { %>
+        <div class="mt-6 pt-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400 uppercase font-semibold mb-2">Absences par enseignant</p>
+            <p class="text-sm text-gray-500">Détail par enseignant non disponible (vérifier que Gestion Absences est configuré et démarré). Total : <strong><%= etudiant.getNbAbsences() %> absence(s)</strong>.</p>
+        </div>
+        <% } %>
     </div>
 
     <%-- Zone danger --%>
