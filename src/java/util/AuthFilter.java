@@ -7,9 +7,11 @@ import jakarta.servlet.http.*;
 import java.io.IOException;
 
 /**
- * Filtre d'authentification - protège toutes les pages /vues/*
+ * Filtre d'authentification étendu.
+ * Protège les URLs /vues/*, /admin/*, /enseignant/*, /etudiant/*
+ * avec vérification du rôle approprié.
  */
-@WebFilter("/vues/*")
+@WebFilter(urlPatterns = {"/vues/*", "/admin/*", "/enseignant/*", "/etudiant/*"})
 public class AuthFilter implements Filter {
 
     @Override
@@ -19,14 +21,46 @@ public class AuthFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) res;
         HttpSession session = request.getSession(false);
+        String path = request.getServletPath();
 
-        boolean loggedIn = (session != null && session.getAttribute("utilisateur") != null);
+        Utilisateur user = (session != null) 
+            ? (Utilisateur) session.getAttribute("utilisateur") 
+            : null;
 
-        if (!loggedIn) {
+        if (user == null) {
+            AppLogger.warn("AuthFilter", "Accès non authentifié à " + path);
             response.sendRedirect(request.getContextPath() + "/LoginServlet");
-        } else {
-            chain.doFilter(req, res);
+            return;
         }
+
+        if (!isAuthorized(user, path)) {
+            AppLogger.warn("AuthFilter", "Accès non autorisé: " + user.getEmail() + " vers " + path);
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Accès non autorisé pour votre rôle.");
+            return;
+        }
+
+        chain.doFilter(req, res);
+    }
+
+    /**
+     * Vérifie si l'utilisateur a le rôle requis pour accéder au chemin.
+     */
+    private boolean isAuthorized(Utilisateur user, String path) {
+        if (path == null) return true;
+        
+        Utilisateur.Role role = user.getRole();
+        
+        if (path.startsWith("/admin/") || path.contains("/admin/")) {
+            return role == Utilisateur.Role.ADMIN;
+        }
+        if (path.startsWith("/enseignant/") || path.contains("/enseignant/")) {
+            return role == Utilisateur.Role.ENSEIGNANT || role == Utilisateur.Role.ADMIN;
+        }
+        if (path.startsWith("/etudiant/") || path.contains("/etudiant/")) {
+            return role == Utilisateur.Role.ETUDIANT || role == Utilisateur.Role.ADMIN;
+        }
+        
+        return true;
     }
 
     @Override public void init(FilterConfig fc) {}

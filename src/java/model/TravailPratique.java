@@ -47,6 +47,10 @@ public class TravailPratique {
     @JoinColumn(name = "module_id")
     private Module module;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private TravailPratique parent;
+
     @OneToMany(mappedBy = "travail", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Commentaire> commentaires;
 
@@ -83,4 +87,6 @@ public class TravailPratique {
     public void setModule(Module m) { this.module = m; }
     public List<Commentaire> getCommentaires() { return commentaires; }
     public void setCommentaires(List<Commentaire> c) { this.commentaires = c; }
+    public TravailPratique getParent() { return parent; }
+    public void setParent(TravailPratique p) { this.parent = p; }
 }

@@ -37,6 +37,7 @@ public class NonRendusApiServlet extends HttpServlet {
         resp.setContentType("application/json;charset=UTF-8");
         resp.setCharacterEncoding("UTF-8");
         resp.setHeader("Access-Control-Allow-Origin", "*");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, X-API-Key");
 
         Date now = new Date();
         List<Object[]> result = new ArrayList<>();

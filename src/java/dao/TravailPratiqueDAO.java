@@ -164,4 +164,51 @@ public class TravailPratiqueDAO {
             ).setParameter("s", statut).getSingleResult();
         } finally { em.close(); }
     }
+
+    /**
+     * Récupère l'historique des versions d'un TP (toutes les versions liées).
+     * Remonte jusqu'à la racine puis récupère toute la chaîne descendante.
+     */
+    public List<TravailPratique> findVersionHistory(Long tpId) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TravailPratique tp = em.find(TravailPratique.class, tpId);
+            if (tp == null) return java.util.Collections.emptyList();
+
+            // Remonter jusqu'à la version racine (version 1)
+            TravailPratique root = tp;
+            while (root.getParent() != null) {
+                root = root.getParent();
+            }
+
+            // Récupérer toutes les versions par titre, étudiant et module
+            return em.createQuery(
+                "SELECT t FROM TravailPratique t " +
+                "WHERE t.etudiant.id = :etudiantId " +
+                "AND t.module.id = :moduleId " +
+                "AND t.titre = :titre " +
+                "ORDER BY t.version ASC",
+                TravailPratique.class
+            )
+            .setParameter("etudiantId", root.getEtudiant().getId())
+            .setParameter("moduleId", root.getModule().getId())
+            .setParameter("titre", root.getTitre())
+            .getResultList();
+        } finally { em.close(); }
+    }
+
+    /**
+     * Trouve la version racine (version 1) d'un TP.
+     */
+    public TravailPratique findRootVersion(Long tpId) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TravailPratique tp = em.find(TravailPratique.class, tpId);
+            if (tp == null) return null;
+            while (tp.getParent() != null) {
+                tp = tp.getParent();
+            }
+            return tp;
+        } finally { em.close(); }
+    }
 }

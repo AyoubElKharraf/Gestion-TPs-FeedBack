@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.Utilisateur, model.Enseignant, model.Notification, java.util.List, java.util.Map, java.text.SimpleDateFormat" %>
+<%@ page import="model.Utilisateur, model.Enseignant, model.Notification, java.util.List, java.util.Map, java.text.SimpleDateFormat, util.HtmlUtil" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     List<Enseignant> enseignants = (List<Enseignant>) request.getAttribute("enseignants");
@@ -44,10 +45,10 @@
                 <% if (userSession != null && userSession.getPrenom() != null && userSession.getNom() != null) {
                     String p = (userSession.getPrenom() != null && !userSession.getPrenom().isEmpty()) ? String.valueOf(userSession.getPrenom().charAt(0)) : "?";
                     String n = (userSession.getNom() != null && !userSession.getNom().isEmpty()) ? String.valueOf(userSession.getNom().charAt(0)) : "?";
-                    out.print(p + n);
+                    out.print(HtmlUtil.escape(p + n));
                 } else { %>ET<% } %>
             </div>
-            <span class="text-sm font-medium hidden md:block"><%= userSession != null && userSession.getNom() != null && userSession.getPrenom() != null ? userSession.getNomComplet() : "Étudiant" %></span>
+            <span class="text-sm font-medium hidden md:block"><%= userSession != null && userSession.getNom() != null && userSession.getPrenom() != null ? HtmlUtil.escape(userSession.getNomComplet()) : "Étudiant" %></span>
         </button>
     </div>
 </header>
@@ -118,7 +119,7 @@
         </div>
         <% } else if (otherUser != null) { %>
         <div class="bg-white rounded-xl shadow p-6 max-w-xl">
-            <h3 class="text-lg font-semibold text-primary mb-3">Conversation avec <%= otherUser.getNomComplet() %></h3>
+            <h3 class="text-lg font-semibold text-primary mb-3">Conversation avec <%= HtmlUtil.escape(otherUser.getNomComplet()) %></h3>
             <% if (conversation != null && !conversation.isEmpty()) { %>
             <p class="text-xs text-gray-500 mb-2">Dernier message : <%= sdfTime.format(conversation.get(conversation.size()-1).getDateCreation()) %></p>
             <% } %>
@@ -130,7 +131,7 @@
                 %>
                 <div class="flex <%= fromMe ? "justify-end" : "justify-start" %>">
                     <div class="max-w-[85%] rounded-2xl px-4 py-2 <%= fromMe ? "bg-primary text-white" : "bg-white border border-gray-200 text-gray-800" %>">
-                        <p class="text-sm"><%= n.getMessage() != null ? n.getMessage().replace("<", "&lt;").replace(">", "&gt;") : "" %></p>
+                        <p class="text-sm"><%= HtmlUtil.escape(n.getMessage()) %></p>
                         <p class="text-xs mt-1 opacity-80"><%= n.getDateCreation() != null ? sdfTime.format(n.getDateCreation()) : "" %><% if (iAmDest) { %> · <%= n.isLu() ? "Lu" : "Non lu" %><% } %></p>
                     </div>
                 </div>
@@ -159,7 +160,7 @@
                         Long unread = (unreadCountMap != null) ? unreadCountMap.get(e.getId()) : null;
                         int unreadInt = (unread != null && unread > 0) ? unread.intValue() : 0;
                     %>
-                    <option value="<%= e.getId() %>"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %><%= lastDate != null ? " – Dernier msg: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
+                    <option value="<%= e.getId() %>"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= HtmlUtil.escape(e.getNomComplet()) %><%= lastDate != null ? " – Dernier msg: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
                     <% } %>
                 </select>
             </div>

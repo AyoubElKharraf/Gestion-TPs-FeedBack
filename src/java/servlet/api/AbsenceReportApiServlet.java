@@ -109,7 +109,7 @@ public class AbsenceReportApiServlet extends HttpServlet {
     private void addCors(HttpServletResponse resp) {
         resp.setHeader("Access-Control-Allow-Origin", "*");
         resp.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, X-API-Key");
     }
 
     private static String readBody(HttpServletRequest req) throws IOException {

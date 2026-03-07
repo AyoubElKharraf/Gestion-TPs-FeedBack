@@ -115,7 +115,7 @@ public class DepotTPServlet extends HttpServlet {
                 req.setAttribute("filtreDateMax", dateMaxParam);
                 req.setAttribute("section", sectionParam);
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etduaint/mes_tps.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etudiant/mes_tps.jsp").forward(req, resp);
                 break;
             }
 
@@ -184,7 +184,7 @@ public class DepotTPServlet extends HttpServlet {
                     }
                 }
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etduaint/depot_form.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etudiant/depot_form.jsp").forward(req, resp);
                 break;
             }
 
@@ -229,7 +229,7 @@ public class DepotTPServlet extends HttpServlet {
                 req.setAttribute("module", module);
                 req.setAttribute("tpPourModule", tpPourModule);
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etduaint/devoir_detail.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etudiant/devoir_detail.jsp").forward(req, resp);
                 break;
             }
 
@@ -252,11 +252,13 @@ public class DepotTPServlet extends HttpServlet {
                         canUpdate = false;
                 }
                 CommentaireDAO commDAO = new CommentaireDAO();
+                List<TravailPratique> versionHistory = tpDAO.findVersionHistory(id);
                 req.setAttribute("tp", tp);
+                req.setAttribute("versionHistory", versionHistory);
                 req.setAttribute("commentaires", commDAO.findByTravail(id));
                 req.setAttribute("canUpdate", canUpdate);
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etduaint/tp_detail.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etudiant/tp_detail.jsp").forward(req, resp);
                 break;
             }
 
@@ -314,7 +316,7 @@ public class DepotTPServlet extends HttpServlet {
                     etudiant.getFiliere() != null ? etudiant.getFiliere() : "M2I"
                 );
                 req.setAttribute("modules", modules);
-                req.getRequestDispatcher("/WEB-INF/vues/etduaint/depot_form.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etudiant/depot_form.jsp").forward(req, resp);
                 return;
             }
 
@@ -330,7 +332,7 @@ public class DepotTPServlet extends HttpServlet {
                     etudiant.getFiliere() != null ? etudiant.getFiliere() : "M2I"
                 );
                 req.setAttribute("modules", modules);
-                req.getRequestDispatcher("/WEB-INF/vues/etduaint/depot_form.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etudiant/depot_form.jsp").forward(req, resp);
                 return;
             }
 
@@ -345,9 +347,10 @@ public class DepotTPServlet extends HttpServlet {
 
             // Calculer la version (si resoumission)
             int version = 1;
+            TravailPratique parentTp = null;
             if (tpParentStr != null && !tpParentStr.isEmpty()) {
-                TravailPratique parent = tpDAO.findById(Long.parseLong(tpParentStr));
-                if (parent != null) version = parent.getVersion() + 1;
+                parentTp = tpDAO.findById(Long.parseLong(tpParentStr));
+                if (parentTp != null) version = parentTp.getVersion() + 1;
             }
 
             // Construire l'entité
@@ -359,6 +362,7 @@ public class DepotTPServlet extends HttpServlet {
             tp.setModule(module);
             tp.setEtudiant(etudiant);
             tp.setVersion(version);
+            tp.setParent(parentTp);
             tp.setStatut(TravailPratique.Statut.SOUMIS);
 
             // Date limite optionnelle

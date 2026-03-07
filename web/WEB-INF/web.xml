@@ -7,15 +7,39 @@
 
     <display-name>MiniProjet-BE4</display-name>
 
-    <!-- URL du système externe Gestion_AbsencesAlerts / AbsTrack (pour signalement des absences et API absences-par-enseignant).
-         - Même machine : http://localhost:8080/GestionAA (AbsTrack sur 8080).
-         - Deux machines (EtudAcadPro sur PC1:8081, AbsTrack sur PC2:8080) : remplacer par l'IP du PC où tourne AbsTrack, ex. http://192.168.1.10:8080/GestionAA -->
+    <!-- ==================== CONFIGURATION GÉNÉRALE ==================== -->
+    
+    <!-- URL du système externe Gestion_AbsencesAlerts / AbsTrack -->
     <context-param>
         <param-name>absence.system.url</param-name>
         <param-value>http://localhost:8081/AbsTrack</param-value>
     </context-param>
 
-    <!-- Filtre d'authentification -->
+    <!-- ==================== CONFIGURATION SÉCURITÉ API ==================== -->
+    
+    <!-- Activer/désactiver l'authentification API (true par défaut) -->
+    <context-param>
+        <param-name>api.key.enabled</param-name>
+        <param-value>true</param-value>
+    </context-param>
+    
+    <!-- Clé(s) API valide(s), séparées par virgule 
+         IMPORTANT: Changer cette clé en production! -->
+    <context-param>
+        <param-name>api.key</param-name>
+        <param-value>EtudAcadPro-API-2025-SecretKey,AbsTrack-Integration-Key</param-value>
+    </context-param>
+    
+    <!-- Liste blanche d'IPs autorisées sans clé API (optionnel, séparées par virgule)
+         Exemple: 127.0.0.1,192.168.1.10 pour autoriser localhost et un serveur -->
+    <context-param>
+        <param-name>api.allowed.ips</param-name>
+        <param-value>127.0.0.1</param-value>
+    </context-param>
+
+    <!-- ==================== FILTRES ==================== -->
+    
+    <!-- Filtre d'authentification utilisateurs (sessions) -->
     <filter>
         <filter-name>AuthFilter</filter-name>
         <filter-class>util.AuthFilter</filter-class>
@@ -23,6 +47,18 @@
     <filter-mapping>
         <filter-name>AuthFilter</filter-name>
         <url-pattern>/vues/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/admin/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/enseignant/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/etudiant/*</url-pattern>
     </filter-mapping>
 
     <!-- Page d'accueil -->

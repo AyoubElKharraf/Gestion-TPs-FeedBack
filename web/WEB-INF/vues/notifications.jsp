@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.*,java.util.*,java.text.SimpleDateFormat" %>
+<%@ page import="model.*,java.util.*,java.text.SimpleDateFormat,util.HtmlUtil" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     List<Notification> notifications = (List<Notification>) request.getAttribute("notifications");
@@ -80,10 +81,10 @@
             </div>
             <div class="flex-1 min-w-0">
                 <% if (n.getExpediteur() != null) { %>
-                <p class="text-xs text-gray-500 mb-0.5">De : <%= n.getExpediteur().getNomComplet() %></p>
+                <p class="text-xs text-gray-500 mb-0.5">De : <%= HtmlUtil.escape(n.getExpediteur().getNomComplet()) %></p>
                 <% } %>
                 <p class="text-sm <%= n.isLu() ? "text-gray-600" : "text-gray-800 font-medium" %>">
-                    <%= n.getMessage() %>
+                    <%= HtmlUtil.escape(n.getMessage()) %>
                 </p>
                 <p class="text-xs text-gray-400 mt-1">
                     <%= sdf.format(n.getDateCreation()) %>

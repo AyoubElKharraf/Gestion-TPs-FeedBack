@@ -113,7 +113,7 @@ public class AlerteDepassementApiServlet extends HttpServlet {
     private void addCors(HttpServletResponse resp) {
         resp.setHeader("Access-Control-Allow-Origin", "*");
         resp.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, X-API-Key");
     }
 
     private void sendJson(HttpServletResponse resp, boolean success, String error, String message) throws IOException {
