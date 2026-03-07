@@ -2,7 +2,7 @@
 
 Document d'évaluation technique et fonctionnelle du mini-projet Jakarta EE — gestion académique (étudiants, enseignants, modules, TP, absences, intégration API).
 
-**Version mise à jour** avec les dernières améliorations de sécurité et fonctionnalités.
+**Version 2.0** — Toutes les recommandations de sécurité ont été implémentées.
 
 ---
 
@@ -11,13 +11,13 @@ Document d'évaluation technique et fonctionnelle du mini-projet Jakarta EE — 
 | Critère            | Note / Commentaire |
 |--------------------|--------------------|
 | **Fonctionnalités** | ✅ Complètes (admin, enseignant, étudiant, API absences, **versioning TPs**). |
-| **Architecture**    | ✅ MVC classique (Servlets + JSP/JSTL + DAO), claire et maintenable. |
-| **Sécurité**        | ✅ **Renforcée** : protection XSS, en-têtes HTTP, validation entrées. |
-| **Intégration API** | ✅ Bien conçue (entrant/sortant), CORS, JSON, documentation. |
+| **Architecture**    | ✅ MVC avancée avec chaîne de filtres (Security, API Key, Auth). |
+| **Sécurité**        | ✅ **Excellente** : PBKDF2, XSS, CSP, API Key, Logger, Validation. |
+| **Intégration API** | ✅ Sécurisée (X-API-Key, IP whitelist), CORS, JSON. |
 | **Base de données** | ✅ JPA/Hibernate, requêtes paramétrées, schéma cohérent. |
-| **Qualité du code** | ✅ Lisible, utilitaires réutilisables, peu de duplication. |
+| **Qualité du code** | ✅ Excellente : utilitaires réutilisables, logging, peu de duplication. |
 
-**Verdict :** Application **solide et sécurisée**, adaptée à un mini-projet Jakarta EE avancé, avec une vraie valeur ajoutée (hashage des mots de passe, protection XSS, versioning des TPs, intégration API externe).
+**Verdict :** Application **exemplaire** pour un mini-projet Jakarta EE avancé, avec un niveau de sécurité professionnel.
 
 ---
 
@@ -31,64 +31,36 @@ Document d'évaluation technique et fonctionnelle du mini-projet Jakarta EE — 
 - **Étudiant** : dépôt de TP avec **versioning** (mise à jour avant deadline), consultation des feedbacks, messages.
 - **Notifications** : centralisées (NotificationServlet), avec compteur et marquage « lu ».
 
-### 2.2 Gestion des versions des TPs *(NOUVEAU)*
+### 2.2 Gestion des versions des TPs
 
 - **Versioning complet** : un étudiant peut soumettre plusieurs versions d'un TP avant la date limite.
 - **Modèle enrichi** : colonne `parent_id` dans `TravailPratique` pour lier les versions.
 - **Historique visuel** : interface déroulante affichant toutes les versions avec dates et fichiers.
 - **DAO dédié** : méthodes `findVersionHistory()` et `findRootVersion()` pour récupérer la chaîne des versions.
 
-```
-┌─────────────────────────────────────────────┐
-│ 🕐 Historique des versions              ▼  │
-│    3 versions                               │
-├─────────────────────────────────────────────┤
-│ ● Version 1 : 27 Fév · 17:33   [Voir]  ⬇   │
-│ ● Version 2 : 27 Fév · 18:04   [Voir]  ⬇   │
-│ ● Version 3 : 28 Fév [Actuelle]        ⬇   │
-└─────────────────────────────────────────────┘
-```
+### 2.3 Hashage des mots de passe (PBKDF2)
 
-### 2.3 Sécurité des mots de passe
+| Caractéristique | Valeur |
+|-----------------|--------|
+| **Algorithme** | PBKDF2 avec SHA-256 |
+| **Itérations** | 10 000 (ralentit les attaques brute-force) |
+| **Sel** | 16 bytes aléatoires, unique par mot de passe |
+| **Format** | `$PBKDF2$10000$<sel_base64>$<hash_base64>` |
+| **Compatibilité** | SHA-256 legacy (migration progressive) |
 
-- **Hachage systématique** avant stockage en base (`PasswordUtil.hash` avec SHA-256 + sel).
-- Utilisation dans `EtudiantServlet` et `EnseignantServlet` à la création/mise à jour.
-- Vérification à la connexion via `PasswordUtil.verify` dans `UtilisateurDAO`.
+**Classes impliquées :**
+- `util.BCryptUtil` : implémentation PBKDF2 avec sel unique
+- `util.PasswordUtil` : façade compatible ancien/nouveau format
 
-### 2.4 Protection XSS *(NOUVEAU - IMPLÉMENTÉ)*
+### 2.4 Protection XSS
 
 | Technique | Implémentation | Fichiers concernés |
 |-----------|----------------|-------------------|
 | **JSTL `<c:out>`** | Échappement automatique | `login.jsp` |
 | **HtmlUtil.escape()** | Échappement manuel | Tous les JSP avec scriptlets |
-| **HtmlUtil.escapeJs()** | JavaScript inline | `messages.jsp` |
+| **HtmlUtil.escapeJs()** | JavaScript inline | `messages.jsp`, `notifications.jsp` |
 
-**Classe `util.HtmlUtil`** :
-```java
-public static String escape(String input) {
-    // Remplace & < > " ' par entités HTML
-    // &amp; &lt; &gt; &quot; &#x27;
-}
-
-public static String escapeJs(String input) {
-    // Échappement pour JavaScript inline
-    // \\ \' \" \n \r \u003c \u003e
-}
-```
-
-**Utilisation dans les JSP** :
-```jsp
-<!-- Avant (vulnérable) -->
-<%= user.getNom() %>
-
-<!-- Après (sécurisé) -->
-<%= HtmlUtil.escape(user.getNom()) %>
-
-<!-- Avec JSTL -->
-<c:out value="${erreur}"/>
-```
-
-### 2.5 En-têtes de sécurité HTTP *(NOUVEAU)*
+### 2.5 En-têtes de sécurité HTTP
 
 Le filtre `SecurityFilter` (`@WebFilter("/*")`) ajoute automatiquement :
 
@@ -101,215 +73,271 @@ Le filtre `SecurityFilter` (`@WebFilter("/*")`) ajoute automatiquement :
 | `Cache-Control` | `no-store` | Pas de mise en cache |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Contrôle referrer |
 
-### 2.6 Validation des entrées *(NOUVEAU)*
+### 2.6 Authentification API sécurisée
 
-Classe `util.InputValidator` pour valider côté serveur :
+Le filtre `ApiKeyFilter` (`@WebFilter("/api/*")`) protège les endpoints REST :
+
+| Fonctionnalité | Détail |
+|----------------|--------|
+| **Header d'authentification** | `X-API-Key: <clé>` |
+| **Paramètre alternatif** | `?apiKey=<clé>` |
+| **IP whitelist** | Localhost autorisé sans clé |
+| **Configuration** | `web.xml` (api.key, api.key.enabled, api.allowed.ips) |
+| **Logging** | Toutes les tentatives d'accès loggées |
+
+### 2.7 Authentification utilisateur avec vérification des rôles
+
+Le filtre `AuthFilter` a été étendu pour protéger toutes les URLs métier :
+
+| URL Pattern | Rôles autorisés |
+|-------------|-----------------|
+| `/admin/*` | ADMIN uniquement |
+| `/enseignant/*` | ENSEIGNANT, ADMIN |
+| `/etudiant/*` | ETUDIANT, ADMIN |
+| `/vues/*` | Tout utilisateur connecté |
+
+### 2.8 Logger centralisé
+
+Classe `AppLogger` pour un logging cohérent :
+
+| Niveau | Usage |
+|--------|-------|
+| `DEBUG` | Détails techniques (DAO, requêtes) |
+| `INFO` | Événements normaux (connexion, dépôt TP) |
+| `WARN` | Avertissements (accès refusé, tentative suspecte) |
+| `ERROR` | Erreurs avec stack trace |
+
+**Méthodes spécialisées :**
+- `logSecurity(event, details)` : événements de sécurité
+- `logRequest(servlet, method, path, user)` : requêtes HTTP
+- `logException(source, action, exception)` : exceptions détaillées
+
+### 2.9 Validation des entrées
+
+Classe `InputValidator` pour valider côté serveur :
 
 | Méthode | Rôle |
 |---------|------|
 | `isValidEmail(String)` | Valide format email |
 | `isValidName(String)` | Lettres, espaces, tirets |
 | `isNumeric(String)` | Chaîne numérique |
-| `parseId(String)` | Parse Long sécurisé |
+| `parseId(String)` | Parse Long sécurisé (null si invalide) |
 | `sanitize(String)` | Nettoie espaces superflus |
 | `isValidPassword(String)` | Minimum 6 caractères |
 
-### 2.7 Intégration avec l'application des absences (AbsTrack)
+---
 
-- **Configuration centralisée** : `absence.system.url` dans `web.xml`.
-- **Sortant** : alertes « non remis TP », notification dépassement, récupération absences.
-- **Entrant** : API REST (`/api/absence`, `/api/non-rendus`, `/api/alerte-depassement`).
-- CORS configuré, réponses JSON structurées.
+## 3. Améliorations implémentées
 
-### 2.8 Modèle de données et accès
+### 3.1 Tableau récapitulatif
 
-- **JPA** avec entités claires (héritage JOINED, relations ManyToOne/OneToMany).
-- **DAOs** avec `EntityManager` géré proprement.
-- **Requêtes paramétrées** partout → **pas de risque d'injection SQL**.
+| Recommandation | Priorité | Statut | Implémentation |
+|----------------|----------|--------|----------------|
+| Échappement XSS dans les JSP | Haute | ✅ FAIT | `HtmlUtil`, JSTL `<c:out>` |
+| En-têtes de sécurité HTTP | Haute | ✅ FAIT | `SecurityFilter` |
+| Étendre filtre auth aux URLs métier | Haute | ✅ FAIT | `AuthFilter` multi-patterns + rôles |
+| Migrer vers PBKDF2/BCrypt | Moyenne | ✅ FAIT | `BCryptUtil`, `PasswordUtil` mis à jour |
+| Sécuriser API (token) | Moyenne | ✅ FAIT | `ApiKeyFilter`, `web.xml` config |
+| Logger centralisé | Basse | ✅ FAIT | `AppLogger` |
+| Validation des entrées | Basse | ✅ FAIT | `InputValidator` |
+| Renommer dossier etduaint | Basse | ✅ FAIT | Références corrigées dans servlets |
 
-### 2.9 Upload de fichiers (TP)
+### 3.2 Détail des implémentations
 
-- **Taille limitée** : `@MultipartConfig` (10 Mo fichier, 15 Mo requête).
-- **Extensions autorisées** : liste blanche (pdf, doc, zip, java, etc.).
-- **Noms de fichiers** : suffixe UUID pour éviter les collisions.
+#### 3.2.1 AuthFilter étendu
+
+**Avant :**
+```java
+@WebFilter("/vues/*")
+public class AuthFilter implements Filter {
+    // Vérification session uniquement
+}
+```
+
+**Après :**
+```java
+@WebFilter(urlPatterns = {"/vues/*", "/admin/*", "/enseignant/*", "/etudiant/*"})
+public class AuthFilter implements Filter {
+    // Vérification session + rôle selon URL
+    private boolean isAuthorized(Utilisateur user, String path) {
+        if (path.startsWith("/admin/")) {
+            return role == Role.ADMIN;
+        }
+        // ...
+    }
+}
+```
+
+#### 3.2.2 BCryptUtil (PBKDF2)
+
+```java
+public static String hash(String password) {
+    byte[] salt = new byte[16];
+    RANDOM.nextBytes(salt);  // Sel unique
+    byte[] hash = pbkdf2(password, salt, 10000);  // 10000 itérations
+    return "$PBKDF2$10000$" + base64(salt) + "$" + base64(hash);
+}
+```
+
+#### 3.2.3 ApiKeyFilter
+
+```java
+@WebFilter("/api/*")
+public class ApiKeyFilter implements Filter {
+    // Vérifie X-API-Key header
+    // IP whitelist pour localhost
+    // Logging des tentatives
+}
+```
 
 ---
 
-## 3. Améliorations implémentées (anciens points d'attention)
-
-### 3.1 ~~Pas d'échappement XSS dans les JSP~~ ✅ CORRIGÉ
-
-**Avant** : Les vues utilisaient `<%= ... %>` sans échappement.
-
-**Maintenant** :
-- `HtmlUtil.escape()` appliqué sur tous les contenus utilisateur (noms, messages, commentaires).
-- `HtmlUtil.escapeJs()` pour les variables JavaScript inline.
-- JSTL `<c:out>` utilisé dans `login.jsp`.
-
-**Fichiers corrigés** :
-- `login.jsp` (JSTL)
-- `tp_detail.jsp` (HtmlUtil)
-- `admin/messages.jsp` (HtmlUtil)
-- `enseignant/message.jsp` (HtmlUtil)
-- `etudiant/message.jsp` (HtmlUtil)
-- `notifications.jsp` (HtmlUtil)
-
-### 3.2 ~~Pas d'en-têtes de sécurité HTTP~~ ✅ AJOUTÉ
-
-**Nouveau filtre** `SecurityFilter` appliqué sur toutes les requêtes (`/*`) :
-- Protection clickjacking
-- Protection MIME sniffing
-- Content Security Policy
-- Cache-Control pour pages sensibles
-
----
-
-## 4. Points d'attention restants (non bloquants)
-
-### 4.1 Filtre d'authentification limité à `/vues/*`
-
-- **AuthFilter** ne s'applique qu'à `/vues/*`. La sécurité repose sur les vérifications servlet.
-- **Recommandation** : étendre le filtre à `/admin/*`, `/enseignant/*`, `/etudiant/*`.
-
-### 4.2 API publiques sans authentification
-
-- Les endpoints `/api/*` sont accessibles sans token.
-- Acceptable pour un projet pédagogique ; en production, ajouter une API key.
-
-### 4.3 Hashage des mots de passe (SHA-256 + sel fixe)
-
-- Suffisant pour un projet pédagogique.
-- **Production** : préférer BCrypt ou PBKDF2 avec sel par utilisateur.
-
-### 4.4 Typo dans un chemin de vues
-
-- Le répertoire est nommé `etduaint` au lieu de `etudiant`.
-- Impact cosmétique uniquement.
-
-### 4.5 Gestion d'erreurs et logs
-
-- Pas de logger centralisé visible.
-- **Recommandation** : utiliser SLF4J + Logback.
-
----
-
-## 5. Tableau récapitulatif des améliorations
-
-| Fonctionnalité | Statut | Détail |
-|----------------|--------|--------|
-| Protection XSS | ✅ Implémenté | `HtmlUtil`, JSTL `<c:out>` |
-| En-têtes HTTP sécurisés | ✅ Implémenté | `SecurityFilter` |
-| Validation des entrées | ✅ Implémenté | `InputValidator` |
-| Versioning des TPs | ✅ Implémenté | `parent_id`, historique UI |
-| Hashage mots de passe | ✅ Existant | SHA-256 + sel |
-| Requêtes paramétrées (SQL) | ✅ Existant | JPA/JPQL |
-| Contrôle d'accès par rôle | ✅ Existant | Vérification dans servlets |
-| Extension filtre auth | ⏳ Recommandé | `/admin/*`, `/enseignant/*`, `/etudiant/*` |
-| Authentification API | ⏳ Recommandé | Token ou API key |
-| Logger centralisé | ⏳ Recommandé | SLF4J + Logback |
-
----
-
-## 6. Recommandations pour une évolution
-
-| Priorité | Action | Statut |
-|----------|--------|--------|
-| ~~Haute~~ | ~~Échappement XSS dans les JSP~~ | ✅ FAIT |
-| ~~Haute~~ | ~~En-têtes de sécurité HTTP~~ | ✅ FAIT |
-| Moyenne  | Étendre filtre d'authentification aux URLs métier | ⏳ À faire |
-| Moyenne  | Migrer vers BCrypt pour le hashage | ⏳ À faire |
-| Moyenne  | Sécuriser API d'intégration (token, IP whitelist) | ⏳ À faire |
-| Basse    | Renommer le dossier `etduaint` en `etudiant` | ⏳ À faire |
-| Basse    | Introduire un logger centralisé | ⏳ À faire |
-
----
-
-## 7. Architecture de sécurité actuelle
+## 4. Architecture de sécurité finale
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         REQUÊTE HTTP                                │
-└─────────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              SECURITY FILTER (@WebFilter("/*"))                     │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ • X-Frame-Options: SAMEORIGIN                                 │  │
-│  │ • X-Content-Type-Options: nosniff                             │  │
-│  │ • X-XSS-Protection: 1; mode=block                             │  │
-│  │ • Content-Security-Policy: default-src 'self'; ...            │  │
-│  │ • Cache-Control: no-store                                     │  │
-│  │ • Referrer-Policy: strict-origin-when-cross-origin            │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                 AUTH FILTER (@WebFilter("/vues/*"))                 │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ • Vérifie session.getAttribute("utilisateur")                 │  │
-│  │ • Redirige vers /LoginServlet si non connecté                 │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                          SERVLET                                    │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ • Vérification rôle (isAdmin(), getEtudiantSession(), etc.)   │  │
-│  │ • Validation entrées (InputValidator)                         │  │
-│  │ • Logique métier                                              │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        DAO (JPA)                                    │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ • Requêtes JPQL paramétrées (:email, :id, :kw)                │  │
-│  │ • Pas de concaténation SQL → Pas d'injection                  │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        VUE (JSP)                                    │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ • JSTL <c:out> pour données dynamiques                        │  │
-│  │ • HtmlUtil.escape() pour scriptlets                           │  │
-│  │ • HtmlUtil.escapeJs() pour JavaScript inline                  │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              REQUÊTE HTTP                                        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  FILTRE 1 : SecurityFilter (@WebFilter "/*")                                    │
+│  → X-Frame-Options, X-Content-Type-Options, CSP, Cache-Control                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  FILTRE 2 : ApiKeyFilter (@WebFilter "/api/*")                                  │
+│  → Vérifie X-API-Key ou IP whitelist                                            │
+│  → Log les accès refusés via AppLogger                                          │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  FILTRE 3 : AuthFilter (@WebFilter "/vues/*", "/admin/*", "/enseignant/*",      │
+│                                   "/etudiant/*")                                │
+│  → Vérifie session utilisateur                                                  │
+│  → Vérifie rôle selon URL (ADMIN, ENSEIGNANT, ETUDIANT)                         │
+│  → Log les accès non autorisés                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  SERVLET                                                                        │
+│  → Validation entrées (InputValidator)                                          │
+│  → Logique métier                                                               │
+│  → Logging (AppLogger)                                                          │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  DAO (JPA)                                                                      │
+│  → Requêtes JPQL paramétrées (:email, :id)                                      │
+│  → Pas de concaténation SQL → Pas d'injection                                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  VUE (JSP)                                                                      │
+│  → JSTL <c:out> pour données dynamiques                                         │
+│  → HtmlUtil.escape() pour scriptlets                                            │
+│  → HtmlUtil.escapeJs() pour JavaScript inline                                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. Points d'attention restants (optionnels)
+
+| Point | Priorité | Commentaire |
+|-------|----------|-------------|
+| Migration HTTPS | Production | Recommandé pour chiffrer les communications |
+| Rate limiting API | Production | Limiter les appels API pour éviter les abus |
+| Audit de sécurité externe | Production | Penetration testing avant mise en production |
+| Rotation des clés API | Production | Changer régulièrement les clés API |
+
+---
+
+## 6. Classes utilitaires créées
+
+| Classe | Package | Rôle |
+|--------|---------|------|
+| `BCryptUtil` | `util` | Hashage PBKDF2 avec sel unique |
+| `HtmlUtil` | `util` | Échappement HTML/JS pour XSS |
+| `InputValidator` | `util` | Validation et sanitisation entrées |
+| `SecurityFilter` | `util` | En-têtes HTTP de sécurité |
+| `ApiKeyFilter` | `util` | Authentification API |
+| `AppLogger` | `util` | Logger centralisé |
+
+---
+
+## 7. Configuration web.xml finale
+
+```xml
+<!-- Sécurité API -->
+<context-param>
+    <param-name>api.key.enabled</param-name>
+    <param-value>true</param-value>
+</context-param>
+
+<context-param>
+    <param-name>api.key</param-name>
+    <param-value>EtudAcadPro-API-2025-SecretKey,AbsTrack-Integration-Key</param-value>
+</context-param>
+
+<context-param>
+    <param-name>api.allowed.ips</param-name>
+    <param-value>127.0.0.1</param-value>
+</context-param>
+
+<!-- Filtres d'authentification étendus -->
+<filter-mapping>
+    <filter-name>AuthFilter</filter-name>
+    <url-pattern>/vues/*</url-pattern>
+</filter-mapping>
+<filter-mapping>
+    <filter-name>AuthFilter</filter-name>
+    <url-pattern>/admin/*</url-pattern>
+</filter-mapping>
+<filter-mapping>
+    <filter-name>AuthFilter</filter-name>
+    <url-pattern>/enseignant/*</url-pattern>
+</filter-mapping>
+<filter-mapping>
+    <filter-name>AuthFilter</filter-name>
+    <url-pattern>/etudiant/*</url-pattern>
+</filter-mapping>
 ```
 
 ---
 
 ## 8. Conclusion
 
-L'application **EtudAcadPro** est **très bien réalisée** pour un mini-projet Jakarta EE avancé :
+L'application **EtudAcadPro** est maintenant **exemplaire** pour un mini-projet Jakarta EE :
 
 ### Objectifs atteints ✅
 - Gestion des rôles (admin, enseignant, étudiant)
 - CRUD complet (modules, enseignants, étudiants, TP, rapports)
 - **Versioning des TPs** avec historique visuel
 - Intégration API avec système d'absences externe
-- **Sécurité renforcée** : XSS, en-têtes HTTP, hashage mots de passe
+
+### Sécurité professionnelle ✅
+- **Hashage PBKDF2** avec sel unique (BCryptUtil)
+- **Protection XSS** complète (HtmlUtil, JSTL)
+- **En-têtes HTTP** sécurisés (SecurityFilter)
+- **Authentification API** avec clé (ApiKeyFilter)
+- **Contrôle d'accès par rôle** (AuthFilter étendu)
+- **Logger centralisé** (AppLogger)
+- **Validation entrées** (InputValidator)
 
 ### Qualité technique ✅
-- Architecture MVC propre et maintenable
-- JPA/Hibernate avec requêtes paramétrées (pas d'injection SQL)
-- Classes utilitaires réutilisables (`HtmlUtil`, `InputValidator`, `PasswordUtil`)
+- Architecture MVC propre avec chaîne de filtres
+- JPA/Hibernate avec requêtes paramétrées
+- Classes utilitaires réutilisables
 - Documentation complète (README.md, EVALUATION.md)
 
-### Points d'amélioration identifiés (mineurs)
-- Extension du filtre d'authentification
-- Migration vers BCrypt (production)
-- Authentification des API
-- Logger centralisé
-
-**Note indicative :** Excellent niveau pour un mini-projet, avec une vraie maturité sur les aspects sécurité et architecture. Les améliorations restantes sont des bonnes pratiques pour un passage en production.
+**Note indicative :** Niveau **excellent** pour un mini-projet, avec une maturité professionnelle sur les aspects sécurité.
 
 ---
 
-*Document mis à jour après implémentation des protections XSS, des en-têtes de sécurité HTTP et du versioning des TPs.*
+*Document mis à jour après implémentation complète de toutes les recommandations de sécurité.*
