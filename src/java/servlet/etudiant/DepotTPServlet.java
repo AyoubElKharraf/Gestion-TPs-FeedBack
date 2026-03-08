@@ -115,7 +115,7 @@ public class DepotTPServlet extends HttpServlet {
                 req.setAttribute("filtreDateMax", dateMaxParam);
                 req.setAttribute("section", sectionParam);
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etudiant/mes_tps.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etduaint/mes_tps.jsp").forward(req, resp);
                 break;
             }
 
@@ -184,7 +184,7 @@ public class DepotTPServlet extends HttpServlet {
                     }
                 }
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etudiant/depot_form.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etduaint/depot_form.jsp").forward(req, resp);
                 break;
             }
 
@@ -229,7 +229,7 @@ public class DepotTPServlet extends HttpServlet {
                 req.setAttribute("module", module);
                 req.setAttribute("tpPourModule", tpPourModule);
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etudiant/devoir_detail.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etduaint/devoir_detail.jsp").forward(req, resp);
                 break;
             }
 
@@ -258,7 +258,7 @@ public class DepotTPServlet extends HttpServlet {
                 req.setAttribute("commentaires", commDAO.findByTravail(id));
                 req.setAttribute("canUpdate", canUpdate);
                 req.setAttribute("nbNotifs", notifDAO.countNonLues(etudiant.getId()));
-                req.getRequestDispatcher("/WEB-INF/vues/etudiant/tp_detail.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etduaint/tp_detail.jsp").forward(req, resp);
                 break;
             }
 
@@ -316,7 +316,7 @@ public class DepotTPServlet extends HttpServlet {
                     etudiant.getFiliere() != null ? etudiant.getFiliere() : "M2I"
                 );
                 req.setAttribute("modules", modules);
-                req.getRequestDispatcher("/WEB-INF/vues/etudiant/depot_form.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etduaint/depot_form.jsp").forward(req, resp);
                 return;
             }
 
@@ -332,7 +332,7 @@ public class DepotTPServlet extends HttpServlet {
                     etudiant.getFiliere() != null ? etudiant.getFiliere() : "M2I"
                 );
                 req.setAttribute("modules", modules);
-                req.getRequestDispatcher("/WEB-INF/vues/etudiant/depot_form.jsp").forward(req, resp);
+                req.getRequestDispatcher("/WEB-INF/vues/etduaint/depot_form.jsp").forward(req, resp);
                 return;
             }
 

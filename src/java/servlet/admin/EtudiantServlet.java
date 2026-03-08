@@ -210,11 +210,12 @@ public class EtudiantServlet extends HttpServlet {
             etudiant.setFiliere(filiere != null ? filiere.trim() : "M2I");
             etudiant.setNumeroEtudiant(numero != null ? numero.trim() : "");
 
+            // Toujours utiliser save() : le DAO fait merge si id présent, persist sinon
+            // (évite Duplicate entry etudiants.PRIMARY quand le formulaire n'envoie pas l'id en édition)
+            etudiantDAO.save(etudiant);
             if (isEdit) {
-                etudiantDAO.update(etudiant);
                 resp.sendRedirect(ctx + "/admin/EtudiantServlet?action=detail&id=" + idParam + "&updated=1");
             } else {
-                etudiantDAO.save(etudiant);
                 resp.sendRedirect(ctx + "/admin/EtudiantServlet?action=list&success=1");
             }
 

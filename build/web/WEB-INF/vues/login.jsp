@@ -1,4 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -36,14 +38,14 @@
     </div>
 
     <!-- Message d'erreur -->
-    <% if (request.getAttribute("erreur") != null) { %>
+    <c:if test="${not empty erreur}">
     <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-        <%= request.getAttribute("erreur") %>
+        <c:out value="${erreur}"/>
     </div>
-    <% } %>
+    </c:if>
 
     <!-- Formulaire -->
-    <form action="<%= request.getContextPath() %>/LoginServlet" method="POST"
+    <form action="${pageContext.request.contextPath}/LoginServlet" method="POST"
           id="loginForm" novalidate>
 
         <!-- Email -->
@@ -56,7 +58,7 @@
                    class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm
                           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
                           transition"
-                   value="<%= request.getAttribute("emailValue") != null ? request.getAttribute("emailValue") : "" %>"/>
+                   value="<c:out value='${emailValue}'/>"/>
             <p id="emailError" class="text-red-500 text-xs mt-1 hidden">
                 Veuillez saisir un email valide.
             </p>

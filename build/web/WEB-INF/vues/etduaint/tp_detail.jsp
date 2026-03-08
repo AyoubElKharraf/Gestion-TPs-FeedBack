@@ -1,14 +1,19 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.*,java.util.*,java.text.SimpleDateFormat" %>
+<%@ page import="model.*,java.util.*,java.text.SimpleDateFormat,util.HtmlUtil" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     TravailPratique tp = (TravailPratique) request.getAttribute("tp");
     List<Commentaire> commentaires = (List<Commentaire>) request.getAttribute("commentaires");
+    List<TravailPratique> versionHistory = (List<TravailPratique>) request.getAttribute("versionHistory");
     Boolean canUpdate = (Boolean) request.getAttribute("canUpdate");
     if (canUpdate == null) canUpdate = true;
     Long nbNotifs = (Long) request.getAttribute("nbNotifs");
     String ctx = request.getContextPath();
     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+    SimpleDateFormat sdfDate = new SimpleDateFormat("dd MMM", new Locale("fr"));
+    SimpleDateFormat sdfHeure = new SimpleDateFormat("HH:mm");
     boolean commented = "1".equals(request.getParameter("commented"));
 %>
 <!DOCTYPE html>
@@ -141,7 +146,7 @@
         <div class="flex items-start justify-between mb-4">
             <div>
                 <h2 class="text-xl font-bold text-primary">
-                    <%= tp.getTitre() %>
+                    <%= HtmlUtil.escape(tp.getTitre()) %>
                     <% if (tp.getVersion() > 1) { %>
                     <span class="text-sm bg-purple-100 text-purple-600 px-2 py-0.5 rounded ml-1">
                         Version <%= tp.getVersion() %>
@@ -149,9 +154,9 @@
                     <% } %>
                 </h2>
                 <p class="text-gray-500 text-sm mt-1">
-                    📚 <%= tp.getModule() != null ? tp.getModule().getNom() : "–" %>
+                    📚 <%= tp.getModule() != null ? HtmlUtil.escape(tp.getModule().getNom()) : "–" %>
                     <% if (tp.getModule() != null && tp.getModule().getEnseignant() != null) { %>
-                    · 👨‍🏫 <%= tp.getModule().getEnseignant().getNomComplet() %>
+                    · 👨‍🏫 <%= HtmlUtil.escape(tp.getModule().getEnseignant().getNomComplet()) %>
                     <% } %>
                 </p>
             </div>
@@ -174,7 +179,7 @@
             <% if (tp.getNomFichier() != null) { %>
             <div>
                 <p class="text-gray-400 text-xs uppercase font-semibold">Fichier</p>
-                <p class="text-gray-700 mt-0.5 font-mono text-xs">📎 <%= tp.getNomFichier() %></p>
+                <p class="text-gray-700 mt-0.5 font-mono text-xs">📎 <%= HtmlUtil.escape(tp.getNomFichier()) %></p>
             </div>
             <% } %>
             <% if (tp.getNote() != null) { %>
@@ -190,10 +195,78 @@
         <% if (tp.getDescription() != null && !tp.getDescription().isEmpty()) { %>
         <div class="mt-4 p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-400 uppercase font-semibold mb-1">Description</p>
-            <p class="text-sm text-gray-700"><%= tp.getDescription() %></p>
+            <p class="text-sm text-gray-700"><%= HtmlUtil.escape(tp.getDescription()) %></p>
         </div>
         <% } %>
     </div>
+
+    <%-- Section Historique des Versions --%>
+    <% if (versionHistory != null && versionHistory.size() > 1) { %>
+    <div class="bg-white rounded-xl shadow mb-5 overflow-hidden">
+        <button type="button" onclick="toggleVersionHistory()" 
+                class="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="text-left">
+                    <p class="font-semibold text-gray-800">Historique des versions</p>
+                    <p class="text-sm text-gray-500"><%= versionHistory.size() %> version<%= versionHistory.size() > 1 ? "s" : "" %></p>
+                </div>
+            </div>
+            <svg id="versionChevron" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+        <div id="versionHistoryPanel" class="hidden border-t border-gray-100">
+            <% for (TravailPratique v : versionHistory) { 
+                boolean isCurrent = v.getId().equals(tp.getId());
+                String dateStr = v.getDateSoumission() != null ? sdfDate.format(v.getDateSoumission()) : "";
+                String heureStr = v.getDateSoumission() != null ? sdfHeure.format(v.getDateSoumission()) : "";
+            %>
+            <div class="px-5 py-3 flex items-center gap-4 <%= isCurrent ? "bg-primary/5 border-l-4 border-primary" : "hover:bg-gray-50" %>">
+                <div class="flex-shrink-0">
+                    <% if (isCurrent) { %>
+                    <div class="w-3 h-3 bg-primary rounded-full"></div>
+                    <% } else { %>
+                    <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                    <% } %>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-800">Version <%= v.getVersion() %></span>
+                        <span class="text-gray-400">:</span>
+                        <span class="text-sm text-gray-600"><%= dateStr %></span>
+                        <% if (isCurrent) { %>
+                        <span class="text-xs bg-primary text-white px-2 py-0.5 rounded-full">Actuelle</span>
+                        <% } %>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        <%= v.getNomFichier() != null ? v.getNomFichier() : "Fichier" %> · <%= heureStr %>
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <% if (!isCurrent) { %>
+                    <a href="<%= ctx %>/etudiant/DepotTPServlet?action=detail&id=<%= v.getId() %>" 
+                       class="text-xs text-primary hover:underline">Voir</a>
+                    <% } %>
+                    <% if (v.getCheminFichier() != null) { %>
+                    <a href="<%= ctx %>/RapportDownloadServlet?file=<%= v.getCheminFichier() %>" 
+                       class="p-1.5 text-gray-400 hover:text-primary hover:bg-gray-100 rounded transition"
+                       title="Télécharger">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </a>
+                    <% } %>
+                </div>
+            </div>
+            <% } %>
+        </div>
+    </div>
+    <% } %>
 
     <%-- Actions (modifier / retirer) : seulement si SOUMIS et avant date limite --%>
     <% if (tp.getStatut() == TravailPratique.Statut.SOUMIS) { %>
@@ -243,10 +316,10 @@
                                 rounded-xl px-4 py-2">
                         <p class="text-xs font-semibold mb-1
                                   <%= isEnseignant ? "text-purple-700" : "text-green-700" %>">
-                            <%= c.getAuteur() != null ? c.getAuteur().getNomComplet() : "?" %>
+                            <%= c.getAuteur() != null ? HtmlUtil.escape(c.getAuteur().getNomComplet()) : "?" %>
                             <% if (isEnseignant) { %> · Enseignant<% } %>
                         </p>
-                        <p class="text-sm text-gray-700"><%= c.getContenu() %></p>
+                        <p class="text-sm text-gray-700"><%= HtmlUtil.escape(c.getContenu()) %></p>
                     </div>
                     <p class="text-xs text-gray-400 mt-1 <%= isEnseignant ? "" : "text-right" %>">
                         <%= sdf.format(c.getDateCreation()) %>
@@ -322,6 +395,17 @@
 
     function toggleProfilePanel() {
         document.getElementById('profilePanel').classList.toggle('hidden');
+    }
+
+    function toggleVersionHistory() {
+        var panel = document.getElementById('versionHistoryPanel');
+        var chevron = document.getElementById('versionChevron');
+        if (panel) {
+            panel.classList.toggle('hidden');
+            if (chevron) {
+                chevron.classList.toggle('rotate-180');
+            }
+        }
     }
 
     document.addEventListener('click', function(e) {

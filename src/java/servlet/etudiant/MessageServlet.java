@@ -58,7 +58,7 @@ public class MessageServlet extends HttpServlet {
             } catch (NumberFormatException ignored) {}
         }
         req.setAttribute("nbNotifs", notifDAO.countNonLues(etu.getId()));
-        req.getRequestDispatcher("/WEB-INF/vues/etudiant/message.jsp").forward(req, resp);
+        req.getRequestDispatcher("/WEB-INF/vues/etduaint/message.jsp").forward(req, resp);
     }
 
     @Override

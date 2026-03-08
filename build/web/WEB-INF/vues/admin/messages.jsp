@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="model.Utilisateur, model.Enseignant, model.Etudiant, model.Notification, java.util.List, java.util.Map, java.text.SimpleDateFormat" %>
+<%@ page import="model.Utilisateur, model.Enseignant, model.Etudiant, model.Notification, java.util.List, java.util.Map, java.text.SimpleDateFormat, util.HtmlUtil" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%
     Utilisateur userSession = (Utilisateur) session.getAttribute("utilisateur");
     List<Enseignant> enseignants = (List<Enseignant>) request.getAttribute("enseignants");
@@ -41,9 +42,9 @@
     <div class="flex items-center gap-4">
         <button onclick="toggleProfilePanel()" class="flex items-center gap-2">
             <div class="w-9 h-9 bg-blue-400 rounded-full flex items-center justify-center font-bold text-white text-sm">
-                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0)) : "AD" %>
+                <%= userSession != null && userSession.getPrenom() != null && userSession.getNom() != null ? HtmlUtil.escape(String.valueOf(userSession.getPrenom().charAt(0)) + String.valueOf(userSession.getNom().charAt(0))) : "AD" %>
             </div>
-            <span class="text-sm font-medium hidden md:block"><%= userSession != null ? userSession.getNomComplet() : "Admin" %></span>
+            <span class="text-sm font-medium hidden md:block"><%= userSession != null ? HtmlUtil.escape(userSession.getNomComplet()) : "Admin" %></span>
         </button>
     </div>
 </header>
@@ -53,8 +54,8 @@
         <button onclick="toggleProfilePanel()" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
     </div>
     <div class="px-4 py-4 text-sm text-gray-700 space-y-1">
-        <p><span class="font-semibold">Nom :</span> <%= userSession != null ? userSession.getNomComplet() : "-" %></p>
-        <p><span class="font-semibold">Email :</span> <%= userSession != null ? userSession.getEmail() : "-" %></p>
+        <p><span class="font-semibold">Nom :</span> <%= userSession != null ? HtmlUtil.escape(userSession.getNomComplet()) : "-" %></p>
+        <p><span class="font-semibold">Email :</span> <%= userSession != null ? HtmlUtil.escape(userSession.getEmail()) : "-" %></p>
         <p><span class="font-semibold">Rôle :</span> <%= userSession != null ? userSession.getRole().name() : "-" %></p>
     </div>
 </div>
@@ -112,20 +113,20 @@
                         Long unread = (unreadCountMap != null) ? unreadCountMap.get(e.getId()) : null;
                         int unreadInt = (unread != null && unread > 0) ? unread.intValue() : 0;
                     %>
-                    <option value="<%= e.getId() %>" data-type="enseignant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %><%= lastDate != null ? " – Dernier: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
+                    <option value="<%= e.getId() %>" data-type="enseignant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= HtmlUtil.escape(e.getNomComplet()) %><%= lastDate != null ? " – Dernier: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
                     <% } %>
                     <% if (etudiants != null) for (Etudiant e : etudiants) {
                         java.util.Date lastDate = (lastMessageDateMap != null) ? lastMessageDateMap.get(e.getId()) : null;
                         Long unread = (unreadCountMap != null) ? unreadCountMap.get(e.getId()) : null;
                         int unreadInt = (unread != null && unread > 0) ? unread.intValue() : 0;
                     %>
-                    <option value="<%= e.getId() %>" data-type="etudiant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= e.getNomComplet() %><%= lastDate != null ? " – Dernier: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
+                    <option value="<%= e.getId() %>" data-type="etudiant"<%= (preselectedDestinataireId != null && preselectedDestinataireId.equals(e.getId())) ? " selected" : "" %>><%= HtmlUtil.escape(e.getNomComplet()) %><%= lastDate != null ? " – Dernier: " + sdfTime.format(lastDate) : "" %><%= unreadInt > 0 ? " (" + unreadInt + " non lu(s))" : "" %></option>
                     <% } %>
                 </select>
             </div>
             <% if (otherUser != null) { %>
             <div class="border-t border-gray-200 pt-4 mt-4">
-                <h3 class="text-sm font-semibold text-primary mb-3">Conversation avec <%= otherUser.getNomComplet() %></h3>
+                <h3 class="text-sm font-semibold text-primary mb-3">Conversation avec <%= HtmlUtil.escape(otherUser.getNomComplet()) %></h3>
                 <% if (conversation != null && !conversation.isEmpty()) { %>
                 <p class="text-xs text-gray-500 mb-2">Dernier message : <%= sdfTime.format(conversation.get(conversation.size()-1).getDateCreation()) %></p>
                 <% } %>
@@ -137,7 +138,7 @@
                     %>
                     <div class="flex <%= fromMe ? "justify-end" : "justify-start" %>">
                         <div class="max-w-[85%] rounded-2xl px-4 py-2 <%= fromMe ? "bg-primary text-white" : "bg-white border border-gray-200 text-gray-800" %>">
-                            <p class="text-sm"><%= n.getMessage() != null ? n.getMessage().replace("<", "&lt;").replace(">", "&gt;") : "" %></p>
+                            <p class="text-sm"><%= HtmlUtil.escape(n.getMessage()) %></p>
                             <p class="text-xs mt-1 opacity-80"><%= n.getDateCreation() != null ? sdfTime.format(n.getDateCreation()) : "" %><% if (iAmDest) { %> · <%= n.isLu() ? "Lu" : "Non lu" %><% } %></p>
                         </div>
                     </div>
@@ -163,8 +164,8 @@
 </div>
 <script>
     function toggleProfilePanel() { document.getElementById('profilePanel').classList.toggle('hidden'); }
-    var ctx = '<%= ctx %>';
-    var preType = '<%= preType %>';
+    var ctx = '<%= HtmlUtil.escapeJs(ctx) %>';
+    var preType = '<%= HtmlUtil.escapeJs(preType) %>';
     var preselectedDestId = '<%= preselectedDestinataireId != null ? preselectedDestinataireId : "" %>';
     document.getElementById('type').addEventListener('change', function() {
         var type = this.value;

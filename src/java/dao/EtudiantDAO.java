@@ -29,10 +29,17 @@ public class EtudiantDAO {
         }
     }
 
+    /**
+     * Liste tous les étudiants, en excluant les utilisateurs qui sont en fait des enseignants.
+     * (Évite d'afficher un enseignant dans le tableau étudiants en cas de donnée incohérente.)
+     */
     public List<Etudiant> findAll() {
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            return em.createQuery("SELECT e FROM Etudiant e", Etudiant.class).getResultList();
+            return em.createQuery(
+                "SELECT e FROM Etudiant e WHERE e.id NOT IN (SELECT en.id FROM Enseignant en)",
+                Etudiant.class
+            ).getResultList();
         } finally {
             em.close();
         }
@@ -53,7 +60,8 @@ public class EtudiantDAO {
         EntityManager em = JPAUtil.getEntityManager();
         try {
             return em.createQuery(
-                "SELECT e FROM Etudiant e WHERE e.aSupprimer = true",
+                "SELECT e FROM Etudiant e WHERE e.aSupprimer = true " +
+                "AND e.id NOT IN (SELECT en.id FROM Enseignant en)",
                 Etudiant.class
             ).getResultList();
         } finally {
@@ -66,9 +74,9 @@ public class EtudiantDAO {
         try {
             String kw = "%" + keyword.toLowerCase() + "%";
             return em.createQuery(
-                "SELECT e FROM Etudiant e WHERE LOWER(e.nom) LIKE :kw " +
-                "OR LOWER(e.prenom) LIKE :kw OR LOWER(e.email) LIKE :kw " +
-                "OR LOWER(e.numeroEtudiant) LIKE :kw", Etudiant.class
+                "SELECT e FROM Etudiant e WHERE e.id NOT IN (SELECT en.id FROM Enseignant en) " +
+                "AND (LOWER(e.nom) LIKE :kw OR LOWER(e.prenom) LIKE :kw OR LOWER(e.email) LIKE :kw " +
+                "OR LOWER(e.numeroEtudiant) LIKE :kw)", Etudiant.class
             ).setParameter("kw", kw).getResultList();
         } finally {
             em.close();
@@ -99,11 +107,21 @@ public class EtudiantDAO {
         }
     }
 
+    /**
+     * Enregistre un étudiant (nouveau ou existant).
+     * Si l'entité a déjà un id (ex. chargée en édition), utilise merge pour éviter
+     * "Duplicate entry for key etudiants.PRIMARY" avec l'héritage JOINED.
+     */
     public void save(Etudiant e) {
+        if (e == null) return;
         EntityManager em = JPAUtil.getEntityManager();
         try {
             em.getTransaction().begin();
-            em.persist(e);
+            if (e.getId() != null) {
+                em.merge(e);
+            } else {
+                em.persist(e);
+            }
             em.getTransaction().commit();
         } catch (Exception ex) {
             em.getTransaction().rollback();
@@ -167,11 +185,16 @@ public class EtudiantDAO {
         }
     }
 
+    /**
+     * Nombre d'étudiants, en excluant les utilisateurs qui sont des enseignants.
+     */
     public long count() {
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            return em.createQuery("SELECT COUNT(e) FROM Etudiant e", Long.class)
-                     .getSingleResult();
+            return em.createQuery(
+                "SELECT COUNT(e) FROM Etudiant e WHERE e.id NOT IN (SELECT en.id FROM Enseignant en)",
+                Long.class
+            ).getSingleResult();
         } finally {
             em.close();
         }
