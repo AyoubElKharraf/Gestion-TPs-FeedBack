@@ -58,11 +58,12 @@ public class DashboardServlet extends HttpServlet {
             String moduleNom = r.getModule() != null ? r.getModule().getNom() : "";
             feedItems.add(new FeedItem(FeedItem.Type.RAPPORT, r.getDateCreation(), r.getTitre(),
                 "Support de cours • " + moduleNom, "Vous",
-                ctx + "/enseignant/RapportServlet", "Voir", r.getId()));
+                ctx + "/enseignant/RapportServlet?action=detail&id=" + r.getId(), "Voir", r.getId()));
         }
         for (TravailPratique t : travaux) {
             String etu = t.getEtudiant() != null ? t.getEtudiant().getNomComplet() : "Étudiant";
             String mod = t.getModule() != null ? t.getModule().getNom() : "";
+            // Lien "Corriger" → page de détail/correction du TP pour l'enseignant (affichage + modifications)
             feedItems.add(new FeedItem(FeedItem.Type.TP, t.getDateSoumission(), t.getTitre(),
                 etu + " • " + mod, etu,
                 ctx + "/enseignant/CorrectionTPServlet?action=detail&id=" + t.getId(), "Corriger", t.getId()));

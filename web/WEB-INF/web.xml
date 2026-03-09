@@ -9,10 +9,18 @@
 
     <!-- ==================== CONFIGURATION GÉNÉRALE ==================== -->
     
-    <!-- URL du système externe Gestion_AbsencesAlerts / AbsTrack -->
+    <!--
+        URL du système externe Gestion Absences / AbsTrack.
+        Si "Le système Absences n'a pas enregistré l'absence" :
+        (1) Vérifier que cette URL pointe bien vers l'application AbsTrack (sans slash final).
+        (2) Démarrer l'application AbsTrack sur le port indiqué (ex. 8081).
+        (3) Dans AbsTrack, l'étudiant et l'enseignant doivent exister avec les MÊMES emails que dans EtudAcadPro.
+        Voir CONFIG_ABSENCES.md pour le dépannage.
+    -->
     <context-param>
         <param-name>absence.system.url</param-name>
-        <param-value>http://localhost:8081/AbsTrack</param-value>
+        <!-- Projet Gestion Absences : ../ElKharrafMansouri_MiniProjet_JakartaEE → contexte déployé ci‑dessous (port 8081) -->
+        <param-value>http://localhost:8081/ElKharrafMansouri_MiniProjet_JakartaEE/AbsTrack</param-value>
     </context-param>
 
     <!-- ==================== CONFIGURATION SÉCURITÉ API ==================== -->

@@ -141,7 +141,11 @@
             <% } %>
             <% if (Boolean.FALSE.equals(request.getAttribute("signale"))) { %>
             <div class="mb-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm">
-                <strong>Le système Gestion_AbsencesAlerts n'a pas enregistré l'absence.</strong> Vérifiez que : (1) l'URL est configurée dans <code>web.xml</code> (context-param <code>absence.system.url</code>) et pointe vers l'application Gestion_AbsencesAlerts ; (2) cette application est démarrée ; (3) l'étudiant et l'enseignant existent dans Gestion_AbsencesAlerts avec les <strong>mêmes adresses email</strong> que dans EtudAcadPro.
+                <strong>Le système Absences n'a pas enregistré l'absence.</strong> Vérifiez que : (1) l'URL est configurée dans <code>web.xml</code> (context-param <code>absence.system.url</code>) et pointe vers l'application Gestion Absences ; (2) cette application est démarrée ; (3) l'étudiant et l'enseignant existent dans Gestion Absences avec les <strong>mêmes adresses email</strong> que dans EtudAcadPro.
+                <% String absenceSystemUrl = (String) request.getAttribute("absenceSystemUrl"); if (absenceSystemUrl != null && !absenceSystemUrl.isEmpty()) { %>
+                <p class="mt-2 text-amber-700"><strong>URL configurée :</strong> <code><%= absenceSystemUrl %></code></p>
+                <p class="mt-1 text-xs text-amber-600">Voir <code>CONFIG_ABSENCES.md</code> pour le dépannage détaillé.</p>
+                <% } %>
             </div>
             <% } %>
             <% if ("param".equals(request.getAttribute("erreur")) || "module".equals(request.getAttribute("erreur")) || "etudiant".equals(request.getAttribute("erreur"))) { %>

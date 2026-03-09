@@ -48,8 +48,20 @@ public class RapportServlet extends HttpServlet {
         if (ens == null) return;
 
         String action = req.getParameter("action");
+        String idParam = req.getParameter("id");
+        if ("detail".equals(action) && idParam != null && !idParam.trim().isEmpty()) {
+            Long id = Long.parseLong(idParam.trim());
+            Rapport r = rapportDAO.findByIdWithModule(id);
+            if (r != null && r.getModule() != null && r.getModule().getEnseignant() != null
+                    && r.getModule().getEnseignant().getId().equals(ens.getId())) {
+                req.setAttribute("rapport", r);
+                req.setAttribute("nbNotifs", notifDAO.countNonLues(ens.getId()));
+                req.setAttribute("activeSection", "rapports");
+                req.getRequestDispatcher("/WEB-INF/vues/enseignant/rapport_detail.jsp").forward(req, resp);
+                return;
+            }
+        }
         if ("delete".equals(action)) {
-            String idParam = req.getParameter("id");
             if (idParam != null) {
                 Long id = Long.parseLong(idParam);
                 Rapport r = rapportDAO.findByIdWithModule(id);

@@ -167,6 +167,7 @@ public class CorrectionTPServlet extends HttpServlet {
                 comm.setContenu("📝 Feedback enseignant : " + feedback.trim());
                 comm.setAuteur(enseignant);
                 comm.setTravail(tp);
+                comm.setDateCreation(new java.util.Date());
                 commDAO.save(comm);
             }
 
@@ -193,6 +194,7 @@ public class CorrectionTPServlet extends HttpServlet {
                     comm.setContenu(contenu.trim());
                     comm.setAuteur(enseignant);
                     comm.setTravail(tp);
+                    comm.setDateCreation(new java.util.Date());
                     commDAO.save(comm);
 
                     // Notifier l'étudiant

@@ -124,7 +124,9 @@
         </nav>
     </aside>
 
-    <main class="flex-1 p-6 max-w-3xl mx-auto w-full">
+    <main class="flex-1 flex flex-col lg:flex-row p-6 gap-6 overflow-hidden">
+    <%-- Colonne gauche : formulaire et infos --%>
+    <div class="flex-1 min-w-0 overflow-y-auto lg:max-w-2xl">
     <% if (corrected) { %>
     <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
         ✅ Correction enregistrée. L'étudiant a été notifié.
@@ -169,7 +171,20 @@
                 </div>
                 <% } %>
             </div>
-            <% if (tp.getNomFichier() != null) { %>
+            <% if (tp.getNomFichier() != null && tp.getCheminFichier() != null) { %>
+            <a href="#" data-viewer-url="<%= ctx %>/TpDownloadServlet?id=<%= tp.getId() %>" id="tpAfficherLink"
+               class="flex flex-col items-center gap-1 ml-4 group cursor-pointer no-underline text-inherit hover:opacity-90"
+               title="Cliquez pour afficher le contenu du fichier dans le lecteur à droite">
+                <div class="w-14 h-16 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <p class="text-xs text-gray-500 max-w-[100px] truncate text-center group-hover:text-primary"><%= tp.getNomFichier() %></p>
+                <p class="text-xs text-primary font-medium">Cliquez pour afficher</p>
+            </a>
+            <% } else if (tp.getNomFichier() != null) { %>
             <div class="flex flex-col items-center gap-1 ml-4">
                 <div class="w-12 h-14 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -298,9 +313,67 @@
     </div>
 
     <% } %>
+    </div><%-- fin colonne gauche --%>
+
+    <%-- Colonne droite : visible uniquement après clic sur l'icône (image 2) → affichage comme image 3 --%>
+    <% if (tp != null && tp.getNomFichier() != null && tp.getCheminFichier() != null) { %>
+    <div id="tpViewerPanel" class="hidden w-full lg:min-w-[400px] lg:w-1/2 xl:flex-1 flex flex-col min-h-[500px] lg:min-h-0 bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-50">
+            <div class="flex items-center gap-2 min-w-0">
+                <button type="button" id="tpViewerCloseBtn" class="p-2 rounded hover:bg-gray-200 text-gray-600 shrink-0" title="Masquer l'affichage du fichier">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+                <span class="text-sm font-medium text-gray-700 truncate"><%= tp.getNomFichier() %></span>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <a href="<%= ctx %>/TpDownloadServlet?id=<%= tp.getId() %>" target="_blank"
+                   class="p-2 rounded hover:bg-gray-200 text-gray-600" title="Ouvrir dans un nouvel onglet">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>
+                <a href="<%= ctx %>/TpDownloadServlet?id=<%= tp.getId() %>" target="_blank" download
+                   class="p-2 rounded hover:bg-gray-200 text-gray-600" title="Télécharger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+        <iframe id="viewerFrame" name="viewerFrame" src="about:blank"
+                class="flex-1 w-full min-h-[450px] border-0"
+                title="Contenu du fichier TP"></iframe>
+    </div>
+    <% } %>
+
     </main>
 </div>
 <script>
+    (function() {
+        var link = document.getElementById('tpAfficherLink');
+        var panel = document.getElementById('tpViewerPanel');
+        var frame = document.getElementById('viewerFrame');
+        if (link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var url = link.getAttribute('data-viewer-url');
+                if (url && frame && panel) {
+                    panel.classList.remove('hidden');
+                    frame.src = url;
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            });
+        }
+        var closeBtn = document.getElementById('tpViewerCloseBtn');
+        if (closeBtn && panel && frame) {
+            closeBtn.addEventListener('click', function() {
+                panel.classList.add('hidden');
+                frame.src = 'about:blank';
+            });
+        }
+    })();
     function toggleNotifPanel() {
         var panel = document.getElementById('notifPanel');
         panel.classList.toggle('hidden');

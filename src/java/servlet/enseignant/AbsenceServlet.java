@@ -71,6 +71,10 @@ public class AbsenceServlet extends HttpServlet {
         boolean signaleKo = "0".equals(req.getParameter("signale"));
         req.setAttribute("signale", signaleOk ? Boolean.TRUE : (signaleKo ? Boolean.FALSE : null));
         req.setAttribute("erreur", req.getParameter("erreur"));
+        if (signaleKo) {
+            String absenceUrl = getServletContext().getInitParameter("absence.system.url");
+            req.setAttribute("absenceSystemUrl", absenceUrl != null ? absenceUrl : "(non configurée)");
+        }
         req.getRequestDispatcher("/WEB-INF/vues/enseignant/absences.jsp").forward(req, resp);
     }
 }

@@ -1,6 +1,6 @@
 # EtudAcadPro — Application de gestion académique
 
-**Mini-projet Jakarta EE** : gestion des étudiants, enseignants, modules, travaux pratiques (TP), rapports et absences, avec intégration API vers un système externe (AbsTrack / Gestion_AbsencesAlerts).
+**Mini-projet Jakarta EE** : gestion des étudiants, enseignants, modules, travaux pratiques (TP), rapports et absences, avec intégration API vers un système externe (AcademyTrack / Gestion des absences). **Pour signaler l'absence d'un étudiant**, l'enseignant utilise l'interface EtudAcadPro (menu Absences) ; l'enregistrement est effectué dans l'autre projet **AcademyTrack** (à démarrer et configurer séparément — voir [§14](#14-intégration-api-avec-lapplication-des-absences) et `CONFIG_ABSENCES.md`).
 
 **Version 2.0** — Sécurité renforcée (PBKDF2, API Key, Logger centralisé)
 
@@ -1761,14 +1761,17 @@ var userName = '<%= HtmlUtil.escapeJs(user.getNom()) %>';
 
 ## 14. Intégration API avec l'application des absences
 
+**Signalement d'absence par l'enseignant :** lorsqu'un enseignant souhaite **signaler un étudiant** (absence pour TP non rendu), il passe par le menu **Absences** d'EtudAcadPro ; l'application envoie alors une requête à l'**autre projet — AcademyTrack** (système de gestion des absences). Il faut donc que le projet **AcademyTrack** soit démarré et configuré (même port, mêmes emails étudiant/enseignant). Voir `CONFIG_ABSENCES.md` pour le dépannage et l'URL dans `web.xml` (`absence.system.url`).
+
 ### 14.1 Configuration
 
 ```xml
 <!-- web.xml -->
 <context-param>
     <param-name>absence.system.url</param-name>
-    <param-value>http://localhost:8081/AbsTrack</param-value>
+    <param-value>http://localhost:8081/ElKharrafMansouri_MiniProjet_JakartaEE/AbsTrack</param-value>
 </context-param>
+<!-- Si AcademyTrack est à la racine du projet, utiliser par ex. http://localhost:8081/ElKharrafMansouri_MiniProjet_JakartaEE -->
 
 <!-- Clés API pour l'intégration -->
 <context-param>
@@ -1795,7 +1798,7 @@ private void addCors(HttpServletResponse resp) {
 }
 ```
 
-### 14.4 Exemple d'appel depuis AbsTrack
+### 14.4 Exemple d'appel depuis AcademyTrack
 
 ```javascript
 fetch('http://localhost:8080/EtudAcadPro/api/alerte-depassement', {
@@ -1962,4 +1965,4 @@ Application de gestion académique avec :
   - Authentification API avec clé (ApiKeyFilter)
   - Contrôle d'accès par rôle (AuthFilter étendu)
   - Logger centralisé (AppLogger)
-- Intégration API avec l'application de gestion des absences (AbsTrack)
+- Intégration API avec l'application de gestion des absences (AcademyTrack) ; signalement d'absence par l'enseignant → enregistrement côté AcademyTrack

@@ -15,6 +15,7 @@ public class Commentaire {
     private String contenu;
 
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "date_creation", nullable = false)
     private Date dateCreation;
 
     @ManyToOne(fetch = FetchType.EAGER)

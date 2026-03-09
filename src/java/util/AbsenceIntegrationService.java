@@ -131,6 +131,8 @@ public final class AbsenceIntegrationService {
     /** @return true seulement si réponse 2xx ET le corps JSON contient "success":true (évite faux positif si une autre URL renvoie 200) */
     private static boolean post(String urlString, String jsonBody) {
         HttpURLConnection conn = null;
+        int code = -1;
+        String responseBody = "";
         try {
             URL url = new URL(urlString);
             conn = (HttpURLConnection) url.openConnection();
@@ -142,13 +144,24 @@ public final class AbsenceIntegrationService {
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(jsonBody.getBytes(StandardCharsets.UTF_8));
             }
-            int code = conn.getResponseCode();
-            if (code < 200 || code >= 300) return false;
-            String responseBody = readResponseBody(conn);
+            code = conn.getResponseCode();
+            responseBody = readResponseBody(conn);
             conn.disconnect();
-            return responseBody != null && responseBody.contains("\"success\":true");
+            if (code < 200 || code >= 300) {
+                conn.disconnect();
+                AppLogger.warn("AbsenceIntegrationService",
+                    "API alerte: HTTP " + code + " pour " + urlString + " | réponse: " + (responseBody != null ? responseBody.substring(0, Math.min(200, responseBody.length())) : ""));
+                return false;
+            }
+            boolean ok = responseBody != null && responseBody.contains("\"success\":true");
+            if (!ok) {
+                AppLogger.warn("AbsenceIntegrationService",
+                    "API alerte: réponse 2xx mais pas de \"success\":true pour " + urlString + " | corps: " + (responseBody != null ? responseBody.substring(0, Math.min(200, responseBody.length())) : ""));
+            }
+            return ok;
         } catch (Exception e) {
             if (conn != null) try { conn.disconnect(); } catch (Exception ignored) {}
+            AppLogger.warn("AbsenceIntegrationService", "API alerte échec: " + urlString + " | " + e.getMessage(), e);
             return false;
         }
     }

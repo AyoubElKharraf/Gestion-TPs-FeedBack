@@ -2,6 +2,7 @@ package dao;
 
 import model.Enseignant;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.util.List;
 
 /**
@@ -55,15 +56,29 @@ public class EnseignantDAO {
         }
     }
 
+    /**
+     * Supprime un enseignant (et son utilisateur).
+     * Supprime d'abord toute ligne orpheline dans etudiants pour le même utilisateur_id
+     * (données incohérentes) pour éviter la violation de clé étrangère.
+     */
     public void delete(Long id) {
         EntityManager em = JPAUtil.getEntityManager();
         try {
+            // 1. Dans une 1ère transaction : supprimer toute ligne etudiants pour ce id (évite FK sur utilisateurs)
+            em.getTransaction().begin();
+            Query deleteEtudiant = em.createNativeQuery("DELETE FROM etudiants WHERE utilisateur_id = ?1");
+            deleteEtudiant.setParameter(1, id);
+            deleteEtudiant.executeUpdate();
+            em.getTransaction().commit();
+            em.clear(); // Détacher tout pour repartir propre
+
+            // 2. Dans une 2ème transaction : supprimer l'enseignant (puis l'utilisateur)
             em.getTransaction().begin();
             Enseignant e = em.find(Enseignant.class, id);
             if (e != null) em.remove(e);
             em.getTransaction().commit();
         } catch (Exception ex) {
-            em.getTransaction().rollback();
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw ex;
         } finally {
             em.close();
